@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA - TitleSwitcher
 // @namespace    Reltorakii_is_awesome
-// @version      0.1.6
+// @version      0.2
 // @description  Switches between your custom titles on a press of a key
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -27,16 +27,9 @@
     };
     var tsAvailable = [];
     var tsActive    = 0;
-    var tsOn        = true;
-    var tsSwitchOnKey = KEYS.F;
 
-    function ts(e, pd){
-        if (pd === undefined) {
-            pd = false;
-        }
-        var tsTarget = $(e.target);
-        // && ["INPUT", "TEXTAREA"].indexOf(tsTarget.prop("tagName").toUpperCase()) === -1 && !tsTarget.hasClass("editable")) {
-        if (tsOn && e.which == KEYS.ENTER || (e.which >= KEYS.F1 && e.which <= KEYS.F12)) {
+    function ts(e){
+        if (e.which >= KEYS.F1 && e.which <= KEYS.F12) {
             if (tsAvailable.length == 0) {
                 $.post("titles_view.php", {type:"CUSTOM"}, function(data){
                     tsAvailable = data.titles;
@@ -57,7 +50,6 @@
                 $.post("titles_set.php", {id:tsActiveID}, function(data){
                     console.log(data.m);
                     $("#my_title").html(data.p.my_title);
-                    $("<i>").text(" •").appendTo("#my_title").css("color", tsOn ? "#00ff00" : "#ff0000");
                 });
             }
             if (e.which >= KEYS.F1 && e.which <= KEYS.F12) {
@@ -65,13 +57,7 @@
                 return false;
             }
         }
-
-        if (e.which === KEYS.ESC) {
-            tsOn = !tsOn;
-        }
-        $("#my_title i").css("color", tsOn ? "#00ff00" : "#ff0000");
     }
-    $("<i>").text(" •").appendTo("#my_title").css("color", tsOn ? "#00ff00" : "#ff0000");
     $(document).on("keydown", ts);
 
 })();
