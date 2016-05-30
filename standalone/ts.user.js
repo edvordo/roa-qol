@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA - TitleSwitcher
 // @namespace    Reltorakii_is_awesome
-// @version      0.1.4
+// @version      0.1.5
 // @description  Switches between your custom titles on a press of a key
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -60,7 +60,7 @@
                     $("<i>").text(" •").appendTo("#my_title").css("color", tsOn ? "#00ff00" : "#ff0000");
                 });
             }
-            if (e.which >= 112 && e.which <= 123) {
+            if (e.which >= KEYS.F1 && e.which <= KEYS.F12) {
                 e.preventDefault();
                 return false;
             }
