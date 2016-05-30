@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA - TitleSwitcher
 // @namespace    Reltorakii_is_awesome
-// @version      0.1.5
+// @version      0.1.6
 // @description  Switches between your custom titles on a press of a key
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
