@@ -57,6 +57,7 @@
                 $.post("titles_set.php", {id:tsActiveID}, function(data){
                     console.log(data.m);
                     $("#my_title").html(data.p.my_title);
+                    $("<i>").text(" •").appendTo("#my_title").css("color", tsOn ? "#00ff00" : "#ff0000");
                 });
             }
             if (e.which >= 112 && e.which <= 123) {
@@ -68,7 +69,9 @@
         if (e.which === KEYS.ESC) {
             tsOn = !tsOn;
         }
+        $("#my_title i").css("color", tsOn ? "#00ff00" : "#ff0000");
     }
+    $("<i>").text(" •").appendTo("#my_title").css("color", tsOn ? "#00ff00" : "#ff0000");
     $(document).on("keydown", ts);
 
 })();
