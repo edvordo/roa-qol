@@ -5,6 +5,8 @@
 // @description  Switches between your custom titles on a press of a key
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
+// @downloadURL  https://github.com/edvordo/roa-qol/raw/master/standalone/ts.user.js
+// @updateURL    https://github.com/edvordo/roa-qol/raw/master/standalone/ts.user.js
 // @grant        none
 // ==/UserScript==
 
