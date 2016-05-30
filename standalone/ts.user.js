@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA - TitleSwitcher
 // @namespace    Reltorakii_is_awesome
-// @version      0.1.3
+// @version      0.1.4
 // @description  Switches between your custom titles on a press of a key
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -23,10 +23,11 @@
         Y: 89,        Z: 90,        F1: 112,      F2: 113,
         F3: 114,      F4: 115,      F5: 116,      F6: 117,
         F7: 118,      F8: 119,      F9: 120,      F10: 121,
-        F11: 122,     F12: 123,     ENTER: 13
+        F11: 122,     F12: 123,     ENTER: 13,    ESC: 27
     };
     var tsAvailable = [];
     var tsActive    = 0;
+    var tsOn        = true;
     var tsSwitchOnKey = KEYS.F;
 
     function ts(e, pd){
@@ -35,7 +36,7 @@
         }
         var tsTarget = $(e.target);
         // && ["INPUT", "TEXTAREA"].indexOf(tsTarget.prop("tagName").toUpperCase()) === -1 && !tsTarget.hasClass("editable")) {
-        if (e.which == KEYS.ENTER || (e.which >= KEYS.F1 && e.which <= KEYS.F12)) {
+        if (tsOn && e.which == KEYS.ENTER || (e.which >= KEYS.F1 && e.which <= KEYS.F12)) {
             if (tsAvailable.length == 0) {
                 $.post("titles_view.php", {type:"CUSTOM"}, function(data){
                     tsAvailable = data.titles;
@@ -62,6 +63,10 @@
                 e.preventDefault();
                 return false;
             }
+        }
+
+        if (e.which === KEYS.ESC) {
+            tsOn = !tsOn;
         }
     }
     $(document).on("keydown", ts);
