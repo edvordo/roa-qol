@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA - TitleSwitcher
 // @namespace    Reltorakii_is_awesome
-// @version      0.1.2
+// @version      0.1.3
 // @description  Switches between your custom titles on a press of a key
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -20,7 +20,10 @@
         M: 77,        N: 78,        O: 79,        P: 80,
         Q: 81,        R: 82,        S: 83,        T: 84,
         U: 85,        V: 86,        W: 87,        X: 88,
-        Y: 89,        Z: 90,        Z: 90
+        Y: 89,        Z: 90,        F1: 112,      F2: 113,
+        F3: 114,      F4: 115,      F5: 116,      F6: 117,
+        F7: 118,      F8: 119,      F9: 120,      F10: 121,
+        F11: 122,     F12: 123,     ENTER: 13
     };
     var tsAvailable = [];
     var tsActive    = 0;
@@ -31,7 +34,8 @@
             pd = false;
         }
         var tsTarget = $(e.target);
-        if (e.which == 13 || (e.which >= 112 && e.which <= 123)) {// && ["INPUT", "TEXTAREA"].indexOf(tsTarget.prop("tagName").toUpperCase()) === -1 && !tsTarget.hasClass("editable")) {
+        // && ["INPUT", "TEXTAREA"].indexOf(tsTarget.prop("tagName").toUpperCase()) === -1 && !tsTarget.hasClass("editable")) {
+        if (e.which == KEYS.ENTER || (e.which >= KEYS.F1 && e.which <= KEYS.F12)) {
             if (tsAvailable.length == 0) {
                 $.post("titles_view.php", {type:"CUSTOM"}, function(data){
                     tsAvailable = data.titles;
