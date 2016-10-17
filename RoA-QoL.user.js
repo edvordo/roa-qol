@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      0.5
+// @version      0.5.1
 // @description  Quality if Life Modifications to the game
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -248,8 +248,14 @@
                 ar = Math.abs(ar);
             if (fatigued){
                 favico.badge(ar, {bgColor:"#a00"});
+                if (ar > 50) ar = 50;
+                if (ar > 35) { $("#iAmAFK").text("Approaching 50 FATIGUED actions!").show(); }
+                arc = Math.floor(255/50)*ar;
+                $("#chatMessage").attr("style", "border-color:#"+arc.toString(16)+"0000!important");
             } else {
                 favico.badge(ar, {bgColor:"#050"});
+                $("#iAmAFK").hide();
+                $("#chatMessage").attr("style", "");
             }
         }
     }
