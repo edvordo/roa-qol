@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      0.5.2
+// @version      0.5.3
 // @description  Quality if Life Modifications to the game
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -253,8 +253,13 @@
                 arc = Math.floor(255/50)*ar;
                 $("#chatMessage").attr("style", "border-color:#"+arc.toString(16)+"0000!important");
             } else {
-                var fiColor = (jsonres.p.event_time === null ? "#050" : "#850");
-                favico.badge(ar, {bgColor:fiColor});
+                var et = jsonres.p.event_time;
+                var fiColor = (et === null ? "#050" : "#850");
+                var minutes = Math.floor(et / 60);
+                var seconds = et % 60;
+                    seconds = (Math.abs(seconds) < 10 ? "0" : "") + seconds;
+                var fiValue = (et !== null && et > 0 ? (minutes+":"+seconds) : ar );
+                favico.badge(fiValue, {bgColor:fiColor});
                 $("#iAmAFK").hide();
                 $("#chatMessage").attr("style", "");
             }
