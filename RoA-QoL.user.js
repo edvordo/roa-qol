@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      0.5.3
+// @version      0.5.4
 // @description  Quality if Life Modifications to the game
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -12,6 +12,11 @@
 // ==/UserScript==
 
 /*jshint multistr: true */
+
+/*
+var a = new Date("Jan 05, 2017 09:44:41 EST"); console.log(a);
+var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[false,false,false,false,false,false,false,false,true,false,false,false,false,false,false]},function(data){for (var i in data.al){ var name = $("<div>").append(data.al[i].m).find(".profileLink").text(); var id=data.al[i].aid; var messagedate = data.al[i].ds; var message = data.al[i].m.split(":"); message.shift(); message = message.join("."); if (!PMlog.hasOwnProperty(name)) {PMlog[name] = {};} PMlog[name][id] = {d:messagedate,m:message}; }});
+ */
 
 (function() {
     'use strict';
@@ -84,8 +89,8 @@
     var houseStructure  = {
         rooms   : {}
     };
-    var dungeon         = localStorage.getItem("dungeon");
-        dungeon         = dungeon === null ? {r:{},cf:0,ct:null} : JSON.parse(dungeon);
+    // var dungeon         = localStorage.getItem("dungeon");
+    //     dungeon         = dungeon === null ? {r:{},cf:0,ct:null} : JSON.parse(dungeon);
      
 
     ExpPerHour.tooltip({placement:"left",container:"body",html:true});
@@ -121,10 +126,29 @@
                 houseStructure.rooms[roomName].items[r.name] = {
                     itemtype: r.item_type,
                     name    : r.name,
-                    desc    : title
+                    desc    : title,
+                    level   : r.level
                 };
             }
-            // console.log(houseStructure);
+            localStorage.setItem("houseInfo", JSON.stringify(houseStructure));
+        } else if (req.url === "house_all_builds.php") {
+            var houseData = JSON.parse(localStorage.getItem("houseInfo"));
+            if (houseData !== null && houseData.hasOwnProperty("rooms")) {
+                var items = jsonres.q_b;
+                for (var x in items) {
+                    if (houseData.rooms.hasOwnProperty(items[x].rn)) {
+                        if (houseData.rooms[items[x].rn].items.hasOwnProperty(items[x].n)) {
+                            $("#modal2Content ul > li:eq("+x+") a.houseViewRoomItem").append(" ("+houseData.rooms[items[x].rn].items[items[x].n].level+")").tooltip({title:houseData.rooms[items[x].rn].items[items[x].n].desc,placement:"left",html:true,container:"body"});
+                        } else {
+                            console.log("Don't have info about house room item '"+items[x].n+"'. Open room '"+items[x].rn+"' (just room, no need to open that item) to set up data.");
+                        }
+                    } else {
+                        console.log("Don't have info about house room '"+items[x].rn+"'. Open that room (just room, no need to open it's items) to set up data about it.");
+                    }
+                }
+            } else {
+                console.log("Don't have info about house. Open each room (just room, no need to open items) to set up data.");
+            }
         } else if (req.url === "autobattle.php") {
             favico.badge();
             battles++;
@@ -187,60 +211,60 @@
                 logDrop(jsonres);
             } catch (exception) {console.log(exception);}
         }
-        if (jsonres.hasOwnProperty("data") && jsonres.data.hasOwnProperty("map")) {
-            if (dungeon.cf !== jsonres.data.floor) {
-                dungeon.r = {};
-                dungeon.cf = jsonres.data.floor;
-            }
-            var jrd = jsonres.data;
-            var data = {};
-            var token = $(jrd.map).text().replace("↓", "v"); // map
-                token = btoa(JSON.stringify(token)); // token
-            if (dungeon.r.hasOwnProperty(token)) {
-                data = JSON.parse(JSON.stringify(dungeon.r[token]));
-            } else {
-                data.pe = "";
-                data.ps = "";
-                data.pn = "";
-                data.pw = "";
-                data.t  = token;
-            }
-            if (dungeon.ct === null) {
-                dungeon.ct = token;
-            }
+        // if (jsonres.hasOwnProperty("data") && jsonres.data.hasOwnProperty("map")) {
+        //     if (dungeon.cf !== jsonres.data.floor) {
+        //         dungeon.r = {};
+        //         dungeon.cf = jsonres.data.floor;
+        //     }
+        //     var jrd = jsonres.data;
+        //     var data = {};
+        //     var token = $(jrd.map).text().replace("↓", "v"); // map
+        //         token = btoa(JSON.stringify(token)); // token
+        //     if (dungeon.r.hasOwnProperty(token)) {
+        //         data = JSON.parse(JSON.stringify(dungeon.r[token]));
+        //     } else {
+        //         data.pe = "";
+        //         data.ps = "";
+        //         data.pn = "";
+        //         data.pw = "";
+        //         data.t  = token;
+        //     }
+        //     if (dungeon.ct === null) {
+        //         dungeon.ct = token;
+        //     }
 
-            data.e = jrd.e?1:0; // east
-            data.s = jrd.s?1:0; // south
-            data.n = jrd.n?1:0; // north
-            data.w = jrd.w?1:0; // west
-            data.r = !!jrd.search; // raided
-            data.b = jrd.enemies.length; // battles available
+        //     data.e = jrd.e?1:0; // east
+        //     data.s = jrd.s?1:0; // south
+        //     data.n = jrd.n?1:0; // north
+        //     data.w = jrd.w?1:0; // west
+        //     data.r = !!jrd.search; // raided
+        //     data.b = jrd.enemies.length; // battles available
 
-            dungeon.r[data.t] = data;
+        //     dungeon.r[data.t] = data;
             
-            var walk = jsonres.hasOwnProperty("m") && jsonres.m.match(/You walked (east|south|north|west)/);
-                walk = walk ? jsonres.m.match(/You walked (east|south|north|west)/) : false;
-            if (walk !== false) {
-                walk = walk[1].match(/^./)[0];
-                if (dungeon.ct !== data.t) {
-                    if (typeof dungeon.r[dungeon.ct] !== "undefined") {
-                        dungeon.r[dungeon.ct]["p"+walk] = data.t;
-                        var sm = {
-                            "s": "n",
-                            "n": "s",
-                            "e": "w",
-                            "w": "e"
-                        };
-                        dungeon.r[data.t]["p"+sm[walk]] = dungeon.ct;
-                    }
-                    dungeon.ct = data.t;
-                }
-            }
-            localStorage.setItem("dungeon", JSON.stringify(dungeon));
-            updateDungeonMap(false);
-        } else {
-            updateDungeonMap(req.url.indexOf("dungeon_") === -1);
-        }
+        //     var walk = jsonres.hasOwnProperty("m") && jsonres.m.match(/You walked (east|south|north|west)/);
+        //         walk = walk ? jsonres.m.match(/You walked (east|south|north|west)/) : false;
+        //     if (walk !== false) {
+        //         walk = walk[1].match(/^./)[0];
+        //         if (dungeon.ct !== data.t) {
+        //             if (typeof dungeon.r[dungeon.ct] !== "undefined") {
+        //                 dungeon.r[dungeon.ct]["p"+walk] = data.t;
+        //                 var sm = {
+        //                     "s": "n",
+        //                     "n": "s",
+        //                     "e": "w",
+        //                     "w": "e"
+        //                 };
+        //                 dungeon.r[data.t]["p"+sm[walk]] = dungeon.ct;
+        //             }
+        //             dungeon.ct = data.t;
+        //         }
+        //     }
+        //     localStorage.setItem("dungeon", JSON.stringify(dungeon));
+        //     updateDungeonMap(false);
+        // } else {
+        //     updateDungeonMap(req.url.indexOf("dungeon_") === -1);
+        // }
 
         if (jsonres.hasOwnProperty("p") && jsonres.p.hasOwnProperty("autosRemaining")) {
             var ar = jsonres.p.autosRemaining;
@@ -250,7 +274,7 @@
                 favico.badge(ar, {bgColor:"#a00"});
                 if (ar > 50) ar = 50;
                 if (ar > 35) { $("#iAmAFK").text("Approaching 50 FATIGUED actions!").show(); }
-                arc = Math.floor(255/50)*ar;
+                var arc = Math.floor(255/50)*ar;
                 $("#chatMessage").attr("style", "border-color:#"+arc.toString(16)+"0000!important");
             } else {
                 var et = jsonres.p.event_time;
@@ -266,119 +290,119 @@
         }
     }
 
-    var dmc, dmctx, dmv;
-    function updateDungeonMap(hide) {
-        var d = JSON.parse(JSON.stringify(dungeon));
-        if ($("#dungeonMapCanvas").length === 0) {
-            var h = $("<div>")
-                .attr("id", "dMCW")
-                .css({position:"absolute",top:0,left:0,border:"1px red solid"})
-                .appendTo("body");
-            $("<canvas>").attr({
-                id: "dungeonMapCanvas",
-                width: "325",
-                height: "325"
-            }).appendTo("#dMCW");
-            h.draggable({handle:"#dungeonMapCanvas"}).resizable({stop:function(e,d){$("#dungeonMapCanvas").attr({width:d.size.width,height:d.size.height});updateDungeonMap(false);}});
-            dmc = document.getElementById("dungeonMapCanvas");
-            dmctx = dmc.getContext("2d");
-        }
-        if (hide === false) {
-            $("#dMCW").show();
-            dmv = [];
-            dmctx.clearRect(0,0,dmc.width,dmc.height);
-            drawTile(d.ct, Math.floor(dmc.width/2), Math.floor(dmc.height/2), 1);
-        } else {
-            $("#dMCW").hide();
-        }
-    }
+    // var dmc, dmctx, dmv;
+    // function updateDungeonMap(hide) {
+    //     var d = JSON.parse(JSON.stringify(dungeon));
+    //     if ($("#dungeonMapCanvas").length === 0) {
+    //         var h = $("<div>")
+    //             .attr("id", "dMCW")
+    //             .css({position:"absolute",top:0,left:0,border:"1px red solid"})
+    //             .appendTo("body");
+    //         $("<canvas>").attr({
+    //             id: "dungeonMapCanvas",
+    //             width: "325",
+    //             height: "325"
+    //         }).appendTo("#dMCW");
+    //         h.draggable({handle:"#dungeonMapCanvas"}).resizable({stop:function(e,d){$("#dungeonMapCanvas").attr({width:d.size.width,height:d.size.height});updateDungeonMap(false);}});
+    //         dmc = document.getElementById("dungeonMapCanvas");
+    //         dmctx = dmc.getContext("2d");
+    //     }
+    //     if (hide === false) {
+    //         $("#dMCW").show();
+    //         dmv = [];
+    //         dmctx.clearRect(0,0,dmc.width,dmc.height);
+    //         drawTile(d.ct, Math.floor(dmc.width/2), Math.floor(dmc.height/2), 1);
+    //     } else {
+    //         $("#dMCW").hide();
+    //     }
+    // }
 
-    function drawTile(id, x, y, player) {
-        if (typeof player === "undefined") {
-            player = 0;
-        }
+    // function drawTile(id, x, y, player) {
+    //     if (typeof player === "undefined") {
+    //         player = 0;
+    //     }
 
-        if (dmv.indexOf(id) !== -1) {
-            return;
-        }
-        var tile = dungeon.r[id];
-        dmv.push(id);
+    //     if (dmv.indexOf(id) !== -1) {
+    //         return;
+    //     }
+    //     var tile = dungeon.r[id];
+    //     dmv.push(id);
 
-        // console.log(id,x,y);
-        // console.log(JSON.stringify(tile, null, "\t"));
+    //     // console.log(id,x,y);
+    //     // console.log(JSON.stringify(tile, null, "\t"));
         
-        dmctx.fillStyle = "#333";
-        dmctx.fillRect(x-4, y-4, 10, 10);
+    //     dmctx.fillStyle = "#333";
+    //     dmctx.fillRect(x-4, y-4, 10, 10);
 
-        drawTileWall(x,y,"top", !tile.n);
-        drawTileWall(x,y,"left", !tile.w);
-        drawTileWall(x,y,"right", !tile.e);
-        drawTileWall(x,y,"bot", !tile.s);
+    //     drawTileWall(x,y,"top", !tile.n);
+    //     drawTileWall(x,y,"left", !tile.w);
+    //     drawTileWall(x,y,"right", !tile.e);
+    //     drawTileWall(x,y,"bot", !tile.s);
 
-        if (tile.r) {
-            dmctx.fillStyle     = "#ffd700";
-            dmctx.strokeStyle   = "#ffd700";
-            dmctx.arc(x,y,2, 0, 2*Math.PI);
-            dmctx.fill();
-        }
+    //     if (tile.r) {
+    //         dmctx.fillStyle     = "#ffd700";
+    //         dmctx.strokeStyle   = "#ffd700";
+    //         dmctx.arc(x,y,2, 0, 2*Math.PI);
+    //         dmctx.fill();
+    //     }
 
-        if (tile.b > 0) {
-            dmctx.fillStyle     = "#ff0000";
-            dmctx.strokeStyle   = "#ff0000";
-            dmctx.arc(x,y,2, 0, 2*Math.PI);
-            dmctx.fill();
-        }
+    //     if (tile.b > 0) {
+    //         dmctx.fillStyle     = "#ff0000";
+    //         dmctx.strokeStyle   = "#ff0000";
+    //         dmctx.arc(x,y,2, 0, 2*Math.PI);
+    //         dmctx.fill();
+    //     }
 
-        if (player === 1) {
-            dmctx.fillStyle     = "#ffffff";
-            dmctx.strokeStyle   = "#ffffff";
-            dmctx.arc(x,y,2, 0, 2*Math.PI);
-            dmctx.fill();
-        }
-        if (tile.n === 1 && tile.pn !== "") {
-            // console.log(tile.pn);
-            drawTile(tile.pn, x, y-10);
-        }
-        if (tile.w === 1 && tile.pw !== "") {
-            // console.log(tile.pw);
-            drawTile(tile.pw, x-10, y);
-        }
-        if (tile.e === 1 && tile.pe !== "") {
-            // console.log(tile.pe);
-            drawTile(tile.pe, x+10, y);
-        }
-        if (tile.s === 1 && tile.ps !== "") {
-            // console.log(tile.ps);
-            drawTile(tile.ps, x, y+10);
-        }
+    //     if (player === 1) {
+    //         dmctx.fillStyle     = "#ffffff";
+    //         dmctx.strokeStyle   = "#ffffff";
+    //         dmctx.arc(x,y,2, 0, 2*Math.PI);
+    //         dmctx.fill();
+    //     }
+    //     if (tile.n === 1 && tile.pn !== "") {
+    //         // console.log(tile.pn);
+    //         drawTile(tile.pn, x, y-10);
+    //     }
+    //     if (tile.w === 1 && tile.pw !== "") {
+    //         // console.log(tile.pw);
+    //         drawTile(tile.pw, x-10, y);
+    //     }
+    //     if (tile.e === 1 && tile.pe !== "") {
+    //         // console.log(tile.pe);
+    //         drawTile(tile.pe, x+10, y);
+    //     }
+    //     if (tile.s === 1 && tile.ps !== "") {
+    //         // console.log(tile.ps);
+    //         drawTile(tile.ps, x, y+10);
+    //     }
         
-    }
+    // }
 
-    function drawTileWall(x,y,which, blocked) {
-        if (blocked) {
-            dmctx.strokeStyle = "#ff0000";
-            dmctx.fillStyle   = "#ffffff";
-        } else {
-            dmctx.strokeStyle = "#333";
-            return;
-        }
-        dmctx.beginPath();
-        if (which === "top") {
-            dmctx.moveTo(x-5, y-5);
-            dmctx.lineTo(x+5, y-5);
-        } else if (which === "left") {
-            dmctx.moveTo(x-5, y-5);
-            dmctx.lineTo(x-5, y+5);
-        } else if (which === "right") {
-            dmctx.moveTo(x+5, y+5);
-            dmctx.lineTo(x+5, y-5);
-        } else if (which === "bot") {
-            dmctx.moveTo(x-5, y+5);
-            dmctx.lineTo(x+5, y+5);
-        }
-        dmctx.stroke();
-        dmctx.closePath();
-    }
+    // function drawTileWall(x,y,which, blocked) {
+    //     if (blocked) {
+    //         dmctx.strokeStyle = "#ff0000";
+    //         dmctx.fillStyle   = "#ffffff";
+    //     } else {
+    //         dmctx.strokeStyle = "#333";
+    //         return;
+    //     }
+    //     dmctx.beginPath();
+    //     if (which === "top") {
+    //         dmctx.moveTo(x-5, y-5);
+    //         dmctx.lineTo(x+5, y-5);
+    //     } else if (which === "left") {
+    //         dmctx.moveTo(x-5, y-5);
+    //         dmctx.lineTo(x-5, y+5);
+    //     } else if (which === "right") {
+    //         dmctx.moveTo(x+5, y+5);
+    //         dmctx.lineTo(x+5, y-5);
+    //     } else if (which === "bot") {
+    //         dmctx.moveTo(x-5, y+5);
+    //         dmctx.lineTo(x+5, y+5);
+    //     }
+    //     dmctx.stroke();
+    //     dmctx.closePath();
+    // }
 
     function logDrop(json) {
         var s = sessionStorage.getItem("QoLTracker");
@@ -477,7 +501,7 @@
         if (trackerWrapper.length == 0) {
             trackerWrapper = $("<table>").attr("id", "QoLTrackerWindow").css("width","100%");
             trackerWrapper.appendTo("body");
-            trackerWrapper.html('<thead><tr><th width="150px">Time</th><th>Thing</th></tr></thead><tbody></tbody>');
+            trackerWrapper.html('<thead><tr><th width="200px">Time</th><th>Thing</th></tr></thead><tbody></tbody>');
         }
 
         var trackerListings = trackerWrapper.find("tbody");
@@ -501,10 +525,13 @@
         if (s.t.dr === null) {
             $("<tr>").html("<td colspan=2 align=middle><em>No drops were get yet...</em></td>").appendTo(trackerListings);
         } else {
+            /*
+            var dsummary = {};for (var ts in dstats) { var i = dstats[ts]; var a = i.match(/\+?([0-9]+)\)?\s+([a-z\s]+)/i); if (a===null){a=[0,1,"equipment"];}var c = a[1]; var p = a[2].toLowerCase().replace(" instead", "").trim();if (p==="b"){console.log(i,a); continue;} if (!dsummary.hasOwnProperty(p)) {dsummary[p]=0;}dsummary[p]+=parseInt(c); } console.log(dsummary);
+            */
             for (var timestamp in s.t.dr) {
                 var time = new Date();
                     time.setTime(timestamp);
-                $("<tr>").html("<td>"+time.toLocaleTimeString()+"</td><td>"+s.t.dr[timestamp]+"</td>").appendTo(trackerListings);
+                $("<tr>").html("<td>"+time.toLocaleString()+"</td><td>"+s.t.dr[timestamp]+"</td>").appendTo(trackerListings);
             }
         }
 
@@ -517,7 +544,7 @@
                 
                 var time = new Date();
                     time.setTime(timestamp);
-                $("<tr>").html("<td>"+time.toLocaleTimeString()+"</td><td>["+s.t.ir[timestamp].m+"] "+s.t.ir[timestamp].i+"</td>").appendTo(trackerListings);
+                $("<tr>").html("<td>"+time.toLocaleString()+"</td><td>["+s.t.ir[timestamp].m+"] "+s.t.ir[timestamp].i+"</td>").appendTo(trackerListings);
             }
         }
 
@@ -526,10 +553,13 @@
         if (s.t.sr === null) {
             $("<tr>").html("<td colspan=2 align=middle><em>No stats were get yet...</em></td>").appendTo(trackerListings);
         } else {
+            /*
+            var summary = {};for (var ts in stats) { var i = stats[ts]; var s = i.match(/\>(.*)\</)[1]; var a = i.match(/\+?(0?\.?0?1)/); if (typeof summary[s] === "undefined") { summary[s] = 0.0; } summary[s] += parseFloat(a[1]);  } console.log(summary);
+             */
             for (var timestamp in s.t.sr) {
                 var time = new Date();
                     time.setTime(timestamp);
-                $("<tr>").html("<td>"+time.toLocaleTimeString()+"</td><td>"+s.t.sr[timestamp]+"</td>").appendTo(trackerListings);
+                $("<tr>").html("<td>"+time.toLocaleString()+"</td><td>"+s.t.sr[timestamp]+"</td>").appendTo(trackerListings);
             }
         }
 
