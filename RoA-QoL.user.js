@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      0.5.4
+// @version      0.5.5
 // @description  Quality if Life Modifications to the game
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -103,7 +103,7 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
         if (req.url === "house_room.php") {
             var roomName = jsonres.room.name.split(" ");
                 roomName.shift();
-                roomName.join(" ");
+                roomName = roomName.join(" ");
             houseStructure.rooms[roomName] = {
                 roomtype    : jsonres.room.room_type,
                 items       : {}
