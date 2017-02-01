@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      0.5.5
+// @version      0.5.6
 // @description  Quality if Life Modifications to the game
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -25,6 +25,7 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
         return a.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
+    $("#iAmAFK").prepend($("<span>").attr({id:"iAmAFKFatigue"}).text("Approaching 50 FATIGUED actions!"));
     $('<style>').append("#allThemTables table {width: 100%;}.houseLabel{display: block; text-decoration: none !important;}").appendTo("body");
     $('<td>').append('<table>\
   <tbody>\
@@ -86,9 +87,11 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
     var ResPerHourC     = $("#ClanResourcesPerHour");
     var ResPerHourCH    = $("#ClanResourcesPerHourTR");
     var AverageLag      = $("#AverageLag");
-    var houseStructure  = {
+    var houseStructure  = localStorage.getItem("houseInfo") !== null ? JSON.parse(localStorage.getItem("houseInfo")) : {
         rooms   : {}
     };
+    var fatigueSound = new Audio("http://soundbible.com/grab.php?id=2109&type=mp3");
+    var eventSounf   = new Audio("http://soundbible.com/grab.php?id=2064&type=mp3");
     // var dungeon         = localStorage.getItem("dungeon");
     //     dungeon         = dungeon === null ? {r:{},cf:0,ct:null} : JSON.parse(dungeon);
      
@@ -270,10 +273,13 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
             var ar = jsonres.p.autosRemaining;
             var fatigued = ar < 0;
                 ar = Math.abs(ar);
-            if (fatigued){
+            if (fatigued || ar <= 10){
+                if (ar % 5 === 0) {
+                    fatigueSound.play();
+                }
                 favico.badge(ar, {bgColor:"#a00"});
                 if (ar > 50) ar = 50;
-                if (ar > 35) { $("#iAmAFK").text("Approaching 50 FATIGUED actions!").show(); }
+                if (ar > 35) { $("#iAmAFKFatigue").show(); $("#iAmAFK").show(); }
                 var arc = Math.floor(255/50)*ar;
                 $("#chatMessage").attr("style", "border-color:#"+arc.toString(16)+"0000!important");
             } else {
@@ -284,6 +290,7 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
                     seconds = (Math.abs(seconds) < 10 ? "0" : "") + seconds;
                 var fiValue = (et !== null && et > 0 ? (minutes+":"+seconds) : ar );
                 favico.badge(fiValue, {bgColor:fiColor});
+                $("#iAmAFKFatigue").show();
                 $("#iAmAFK").hide();
                 $("#chatMessage").attr("style", "");
             }
