@@ -170,7 +170,7 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
                 startGold   += g;
                 startXPC    += cxp;
                 startGoldC  += cg;
-                if (xp > 0) {
+                if (xp > 0 || cxp > 0) {
                     ExpPerHour.html(commatize(Math.floor(startXP/(now - startTime)*60*60*1000)))
                         .attr("data-original-title", "<h5>Based upon</h5>" + commatize(Math.floor(startXP))+" XP over "+battles+" battles since "+startTime.toLocaleString()+"<h5>Would be gain / h</h5>"+commatize(Math.floor((60*60*1000/jsonres.p.next_action)*xp))+" / h");
                     GoldPerHour.html(commatize(Math.floor(startGold/(now - startTime)*60*60*1000)))
