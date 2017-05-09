@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      0.5.6
+// @version      0.5.7
 // @description  Quality if Life Modifications to the game
 // @author       Reltorakii
 // @match        https://*.avabur.com/game.php
@@ -102,6 +102,7 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
     GoldPerHourC.tooltip({placement:"left",container:"body",html:true});
     ResPerHour.tooltip({placement:"left",container:"body",html:true});
     ResPerHourC.tooltip({placement:"left",container:"body",html:true});
+    AverageLag.tooltip({placement:"left",container:"body",html:true});
     function x(e, res, req, jsonres) {
         if (req.url === "house_room.php") {
             var roomName = jsonres.room.name.split(" ");
@@ -468,6 +469,8 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
     var requestCount    = 0;
     var ajaxLag         = 0;
 
+    var ajaxLagLatest   = {c:0,d:{}};
+
     function as() {
         var d = new Date();
         ajaxStart = d.getTime() / 1000;
@@ -478,7 +481,25 @@ var PMlog = {}; $.post("account_activity.php", {p:0,username:"Reltorakii",type:[
             ajaxComplete = d.getTime() / 1000;
             requestCount++;
             ajaxLag = ajaxLag + (ajaxComplete - ajaxStart);
-            AverageLag.text(_round(ajaxLag / requestCount,4) + "s");
+            // AverageLag.text(_round(ajaxLag / requestCount,4) + "s");
+
+            var alm = requestCount % 10;
+            if (!ajaxLagLatest.d.hasOwnProperty(alm)) {
+                ajaxLagLatest.d[alm] = {l:0,t:0};
+                ajaxLagLatest.c++;
+            }
+            ajaxLagLatest.d[alm].l = (ajaxComplete - ajaxStart);
+            ajaxLagLatest.d[alm].t = new Date;
+            var alt = 0;
+            var all = "";
+            var alli= 1;
+            all += "<div class=\"clearfix\"><span class=\"pull-left\">Req.#) Time</span><span class=\"pull-right\">Latency</span></div>";
+            for (var ali in ajaxLagLatest.d) {
+                alt += ajaxLagLatest.d[ali].l;
+                all += "<div class=\"clearfix\"><span class=\"pull-left\">"+(alli++)+") "+ajaxLagLatest.d[ali].t.toLocaleTimeString()+"</span><span class=\"pull-right\">"+_round(ajaxLagLatest.d[ali].l, 4)+".</span></div>";
+            }
+            AverageLag.text(_round(alt / ajaxLagLatest.c, 4) + "s")
+                .attr("data-original-title", "<h5>Based upon following data</h5>" + all);
             
             ajaxStart = 0;
         }
