@@ -432,11 +432,12 @@
 
         function __loadTracker () {
             log('Loading tracker');
-            let _tracker = sessionStorage.getItem(trackerSaveKey);
+            let _tracker = localStorage.getItem(trackerSaveKey);
             if (_tracker) {
                 try {
                     _tracker = JSON.parse(_tracker);
                 } catch (e) {
+                    log (`Failure while loading tracker info "${e.message}"`);
                     _tracker = tracker;
                 }
                 tracker = _tracker;
