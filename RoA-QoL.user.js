@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.0-alpha
+// @version      1.0.1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
@@ -183,7 +183,7 @@
             __loadHouseInfo();
             __loadTracker();
 
-            FI = new Favico();
+            FI = new Favico({animation: 'none'});
             FI.badge(0);
 
             $('#XPPerHour, #BattleClanXPPerHour, #BattleGoldPerHour, #BattleClanGoldPerHour, #TSResourcesPerHour, #TSClanResourcesPerHour')
@@ -274,7 +274,7 @@
 
         function __updateFavico (to) {
             let color = to > 0 ? '#050' : '#a00';
-            FI.badge(to, {bgColor: color});
+            FI.badge(Math.abs(to), {bgColor: color});
         }
 
         function __updateStats (type, data) {
