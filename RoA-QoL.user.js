@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.1
+// @version      1.0.2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
@@ -29,6 +29,10 @@
         };
 
         let FI;
+
+        let username;
+
+        let gems = {};
 
         let headerHTML = `<table id="QoLStats">
   <tbody>
@@ -189,6 +193,7 @@
             $('#XPPerHour, #BattleClanXPPerHour, #BattleGoldPerHour, #BattleClanGoldPerHour, #TSResourcesPerHour, #TSClanResourcesPerHour')
                 .tooltip({placement: 'auto left', container: 'body', html: true});
             $('#chatMessageWrapper').attr('data-limiter', '0 / 400');
+            username = $('#username').text();
         }
 
         function __saveHouseInfo () {
@@ -446,6 +451,51 @@
             __platObserver();
         }
 
+        function __registerFameOwnGemTableObserver () {
+            log('Starting gem list observer');
+            let o = new MutationObserver(function (ml) {
+                console.log(`username: ${username}`);
+                for (let m of ml) {
+                    if (m.type !== 'childList' || m.addedNodes.length === 0) {
+                        continue;
+                    }
+                    let rowLastTd = m.addedNodes[0].querySelector('td:last-child');
+                    if (rowLastTd === null || rowLastTd.getAttributeNames().indexOf('data-gemid') === -1) {
+                        continue;
+                    }
+                    let gemId = rowLastTd.getAttribute('data-gemid');
+                    if (!gems.hasOwnProperty(gemId)) {
+                        continue;
+                    }
+                    let gem = gems[gemId];
+                    if (gem.o === username) {
+                        continue;
+                    }
+
+                    let a = document.createElement('a');
+                        a.textContent = '[Fame Own]';
+                        a.setAttribute('data-gemid', gem.i);
+                        a.setAttribute('class', 'RoAQoL-fameown-gem');
+                    rowLastTd.appendChild(document.createTextNode(' '));
+                    rowLastTd.appendChild(a);
+                }
+            });
+            o.observe(document.querySelector('table#inventoryTable'), {childList: true});
+            setTimeout(() => {
+                log('Disconnecting gem list observer');
+                o.disconnect();
+                log('Reset Gems list');
+                gems = {};
+            }, 2E3);
+        }
+
+        function _fameOwnGems(_gems) {
+            for (let gem of _gems) {
+                gems[gem.i] = gem;
+            }
+            __registerFameOwnGemTableObserver();
+        }
+
         //window.onload = __setup;
         window.addEventListener('load', __setup, {once: true});
 
@@ -456,6 +506,7 @@
             proccessLoginInfo: _proccessLI,
             proccessHouse: _handleHouseData,
             updateMessageLimit: _updateMSGLimit,
+            addFameOwnGemsButton: _fameOwnGems,
         };
     })(window);
 
@@ -485,5 +536,19 @@
 
     $(document).on('keyup', '#chatMessage', function (e) {
         setTimeout(QoL.updateMessageLimit, 500, e.target);
+    });
+
+    $(document).on('roa-ws:page:inventory_gems', function (e, d) {
+        QoL.addFameOwnGemsButton(d.result);
+    });
+
+    $(document).on('click', '.RoAQoL-fameown-gem', function (e) {
+        // <button class="confirm_gem_ownership" data-currency="fame" data-gid="381974">Become Owner<br>for 30 Fame Points</button>
+        let button = document.createElement('button');
+            button.setAttribute('class', 'confirm_gem_ownership');
+            button.setAttribute('data-currency', 'fame');
+            button.setAttribute('data-gid', e.target.getAttribute('data-gemid'));
+        document.querySelector('#modal2Content').appendChild(button);
+        button.click();
     });
 })(window, jQuery);
