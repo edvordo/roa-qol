@@ -1,14 +1,17 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.2
+// @version      1.0.3
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
+// @resource     ChartistCSS    https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
+// @require      https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
-// @grant        none
+// @grant        GM_addStyle
+// @grant        GM_getResourceText
 // ==/UserScript==
 
 (function (window, $) {
@@ -34,41 +37,61 @@
 
         let gems = {};
 
-        let headerHTML = `<table id="QoLStats">
-  <tbody>
-    <tr>
-      <td class="left">XP / h:</td>
-      <td class="right" id="XPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
-    </tr>
-    <tr class="hidden" id="BattleClanXPPerHourTR">
-      <td class="left">Clan XP / h:</td>
-      <td class="right" id="BattleClanXPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
-    </tr>
-    <tr class="hidden" id="BattleGoldPerHourTR">
-      <td class="left">Gold / h:</td>
-      <td class="right" id="BattleGoldPerHour" data-toggle="tooltip" title="0" style="color:#FFD700;"></td>
-    </tr>
-    <tr class="hidden" id="BattleClanGoldPerHourTR">
-      <td class="left">Clan Gold / h:</td>
-      <td class="right" id="BattleClanGoldPerHour" data-toggle="tooltip" title="0" style="color:#FFD700;"></td>
-    </tr>
-    <tr class="hidden" id="TSResourcesPerHourTR">
-      <td class="left">Res / h:</td>
-      <td class="right" id="TSResourcesPerHour" data-toggle="tooltip" title="0"></td>
-    </tr>
-    <tr class="hidden" id="TSClanResourcesPerHourTR">
-      <td class="left">Clan Res / h:</td>
-      <td class="right" id="TSClanResourcesPerHour" data-toggle="tooltip" title="0"></td>
-    </tr>
-    <tr>
-      <td class="left">ETA to level:</td>
-      <td class="right" id="LevelETA" data-toggle="tooltip" title="0"></td>
-    </tr>
-    <tr>
-      <td colspan="2" align="center"></td>
-    </tr>
-  </tbody>
-</table>`;
+        let platObserver, goldObserver, matsObserver, fragsObeserver
+
+        let headerHTML = `
+            <table id="QoLStats">
+                <tbody>
+                <tr>
+                    <td class="left">XP / h:</td>
+                    <td class="right" id="XPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
+                </tr>
+                <tr class="hidden" id="BattleClanXPPerHourTR">
+                    <td class="left">Clan XP / h:</td>
+                    <td class="right" id="BattleClanXPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
+                </tr>
+                <tr class="hidden" id="BattleGoldPerHourTR">
+                    <td class="left">Gold / h:</td>
+                    <td class="right" id="BattleGoldPerHour" data-toggle="tooltip" title="0"
+                        style="color:#FFD700;"></td>
+                </tr>
+                <tr class="hidden" id="BattleClanGoldPerHourTR">
+                    <td class="left">Clan Gold / h:</td>
+                    <td class="right" id="BattleClanGoldPerHour" data-toggle="tooltip" title="0"
+                        style="color:#FFD700;"></td>
+                </tr>
+                <tr class="hidden" id="TSResourcesPerHourTR">
+                    <td class="left">Res / h:</td>
+                    <td class="right" id="TSResourcesPerHour" data-toggle="tooltip" title="0"></td>
+                </tr>
+                <tr class="hidden" id="TSClanResourcesPerHourTR">
+                    <td class="left">Clan Res / h:</td>
+                    <td class="right" id="TSClanResourcesPerHour" data-toggle="tooltip" title="0"></td>
+                </tr>
+                <tr>
+                    <td class="left">ETA to level:</td>
+                    <td class="right" id="LevelETA" data-toggle="tooltip" title="0"></td>
+                </tr>
+                <tr>
+                    <td colspan="2" align="center">
+                        <a href="javascript:void(0)" class="topLink" id="RoA-QoL-open-hub">RoA-QoL Hub</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>`;
+
+        let hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
+    <div class="btn-group">
+        <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
+    </div>
+    <hr>
+    <div id="RQ-hub-sections">
+        <div id="RQ-hub-charts-wrapper" style="display: none;">
+            <h3 class="text-center">Plat gains</h3>
+            <div id="RQ-hub-chart-plat"></div>
+        </div>
+    </div>
+</div>`;
 
         let QoLStats = {
             e: {},
@@ -154,6 +177,20 @@
             return result.join(' ');
         };
 
+        Number.prototype.abbr = function() {
+            let value = this.valueOf();
+
+            let markers = ['', 'k', 'M', 'B', 'T', 'Qa', 'Qi', 'S', 'O', 'N', 'Dd'];
+
+            let index = 0;
+            while (value >= 1000) {
+                index++;
+                value /= 1000
+            }
+
+            return `${Math.round(value)}${markers[index]}`;
+        };
+
         function __setup () {
             log('Starting setup');
             $('<style>').attr('id', 'RoA-QoL-styles').append(`
@@ -172,6 +209,17 @@
             border: 1px solid var(--border-color);
             right: 110px;
         }
+        .ct-label {
+            color: #d2d2d2;
+        }
+        .ct-series-a .ct-line {
+            stroke-width: 2px;
+            stroke: var(--action-color);
+        }
+        table#QoLStats tbody tr td:first-child {
+            white-space: nowrap;
+            overflow: hidden;
+        }
         `).appendTo('body');
             $('<td>').append(headerHTML)
                 .addClass('col-xs-2 hidden-xs hidden-sm')
@@ -181,6 +229,7 @@
                 QoLStats.e[e.attr('id')] = e;
                 QoLStats.d[e.attr('id')] = 0;
             });
+            $('#modalContent').append(hubHTML);
             QoLStats.d.BattleXPPerHour = 0;
             QoLStats.d.TSXPPerHour = 0;
 
@@ -194,6 +243,7 @@
                 .tooltip({placement: 'auto left', container: 'body', html: true});
             $('#chatMessageWrapper').attr('data-limiter', '0 / 400');
             username = $('#username').text();
+            GM_addStyle(GM_getResourceText('ChartistCSS'));
         }
 
         function __saveHouseInfo () {
@@ -442,7 +492,7 @@
                 try {
                     _tracker = JSON.parse(_tracker);
                 } catch (e) {
-                    log (`Failure while loading tracker info "${e.message}"`);
+                    log(`Failure while loading tracker info "${e.message}"`);
                     _tracker = tracker;
                 }
                 tracker = _tracker;
@@ -473,9 +523,9 @@
                     }
 
                     let a = document.createElement('a');
-                        a.textContent = '[Fame Own]';
-                        a.setAttribute('data-gemid', gem.i);
-                        a.setAttribute('class', 'RoAQoL-fameown-gem');
+                    a.textContent = '[Fame Own]';
+                    a.setAttribute('data-gemid', gem.i);
+                    a.setAttribute('class', 'RoAQoL-fameown-gem');
                     rowLastTd.appendChild(document.createTextNode(' '));
                     rowLastTd.appendChild(a);
                 }
@@ -489,11 +539,68 @@
             }, 2E3);
         }
 
-        function _fameOwnGems(_gems) {
+        function _fameOwnGems (_gems) {
             for (let gem of _gems) {
                 gems[gem.i] = gem;
             }
             __registerFameOwnGemTableObserver();
+        }
+
+        function __hubToggleTo (div = null) {
+            $('#RQ-hub-sections > div').hide();
+            if (div !== null) {
+                $(div).fadeIn();
+            }
+        }
+
+        function _closeHub () {
+            $('#RQ-hub-wrapper').hide();
+            __hubToggleTo();
+        }
+
+        function _showCharts () {
+            __hubToggleTo('#RQ-hub-charts-wrapper');
+            let platData = [];
+            s = '[';
+            for (let timestamp in tracker.platinum) {
+                if (!tracker.platinum.hasOwnProperty(timestamp)) {
+                    continue;
+                }
+                let plat = tracker.platinum[timestamp];
+                platData.push({
+                    x: new Date(timestamp),
+                    y: plat,
+                });
+                s += `\n\t{x: new Date('${timestamp}'), y: ${plat}},`;
+            }
+            s += `\n]`;
+            console.log(s);
+
+            new Chartist.Line('#RQ-hub-chart-plat', {
+                series: [
+                    {
+                        name: 'Personal plat levels',
+                        data: platData,
+                    },
+                ],
+            }, {
+                axisX: {
+                    type: Chartist.FixedScaleAxis,
+                    divisor: 10,
+                    labelInterpolationFnc: function (value) {
+                        return moment(value).format('MMM D HH:mm');
+                    },
+                },
+                axisY: {
+                    labelInterpolationFnc(value) {
+                        return value.abbr();
+                    }
+                },
+                lineSmooth: Chartist.Interpolation.simple(),
+                showPoint: false,
+                low: 0,
+                showArea: false,
+            });
         }
 
         //window.onload = __setup;
@@ -507,6 +614,8 @@
             proccessHouse: _handleHouseData,
             updateMessageLimit: _updateMSGLimit,
             addFameOwnGemsButton: _fameOwnGems,
+            showCharts: _showCharts,
+            closeHub: _closeHub,
         };
     })(window);
 
@@ -545,10 +654,23 @@
     $(document).on('click', '.RoAQoL-fameown-gem', function (e) {
         // <button class="confirm_gem_ownership" data-currency="fame" data-gid="381974">Become Owner<br>for 30 Fame Points</button>
         let button = document.createElement('button');
-            button.setAttribute('class', 'confirm_gem_ownership');
-            button.setAttribute('data-currency', 'fame');
-            button.setAttribute('data-gid', e.target.getAttribute('data-gemid'));
+        button.setAttribute('class', 'confirm_gem_ownership');
+        button.setAttribute('data-currency', 'fame');
+        button.setAttribute('data-gid', e.target.getAttribute('data-gemid'));
         document.querySelector('#modal2Content').appendChild(button);
         button.click();
+    });
+
+    $(document).on('click', '#RoA-QoL-open-hub', function () {
+        $('#modalTitle').text('RoA-QoL - HUB');
+        $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
+    });
+
+    $(document).on('click', '#modalBackground', function() {
+        QoL.closeHub();
+    });
+
+    $(document).on('click', '#RQ-hub-charts', function () {
+        QoL.showCharts();
     });
 })(window, jQuery);
