@@ -7,7 +7,8 @@ Also, an install into a Tampermonkey/Greasemonkey is kinda recommended, since th
 
 ## Features
 
-* [House items quick preview fix](http://i.imgur.com/wG9PeoS.jpg) (moved to above userstyle)
+* [House items quick preview fix](https://i.imgur.com/wG9PeoS.jpg) (moved to above userstyle)
 * [Per hour gains for battle and TS](https://i.imgur.com/AaRNfRO.png)
 * [Char count in chat message (max enforced by game is 400)](https://i.imgur.com/68lVp0F.png)
-* [Stamina remaining/Fatigue favicon counter](http://i.imgur.com/qyYmmzT.png)
+* [Stamina remaining/Fatigue favicon counter](https://i.imgur.com/qyYmmzT.png)
+* [One-click fame-own gems](https://i.imgur.com/1fZFifw.png)
