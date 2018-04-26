@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.3
+// @version      1.0.4
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
+// @resource     ChartistCSS        https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
+// @resource     ChartistTTipCSS    https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.css
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
-// @resource     ChartistCSS    https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
 // @require      https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.js
+// @require      https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_addStyle
@@ -37,7 +39,7 @@
 
         let gems = {};
 
-        let platObserver, goldObserver, matsObserver, fragsObeserver
+        let platObserver, goldObserver, matsObserver, fragsObeserver;
 
         let headerHTML = `
             <table id="QoLStats">
@@ -216,6 +218,11 @@
             stroke-width: 2px;
             stroke: var(--action-color);
         }
+        .ct-series-a .ct-point {
+            stroke: var(--action-color);
+            stroke-width: 4px;
+            stroke-linecap: square;
+        }
         table#QoLStats tbody tr td:first-child {
             white-space: nowrap;
             overflow: hidden;
@@ -244,6 +251,7 @@
             $('#chatMessageWrapper').attr('data-limiter', '0 / 400');
             username = $('#username').text();
             GM_addStyle(GM_getResourceText('ChartistCSS'));
+            GM_addStyle(GM_getResourceText('ChartistTTipCSS'));
         }
 
         function __saveHouseInfo () {
@@ -504,7 +512,6 @@
         function __registerFameOwnGemTableObserver () {
             log('Starting gem list observer');
             let o = new MutationObserver(function (ml) {
-                console.log(`username: ${username}`);
                 for (let m of ml) {
                     if (m.type !== 'childList' || m.addedNodes.length === 0) {
                         continue;
@@ -557,30 +564,13 @@
             $('#RQ-hub-wrapper').hide();
             __hubToggleTo();
         }
-
-        function _showCharts () {
-            __hubToggleTo('#RQ-hub-charts-wrapper');
-            let platData = [];
-            s = '[';
-            for (let timestamp in tracker.platinum) {
-                if (!tracker.platinum.hasOwnProperty(timestamp)) {
-                    continue;
-                }
-                let plat = tracker.platinum[timestamp];
-                platData.push({
-                    x: new Date(timestamp),
-                    y: plat,
-                });
-                s += `\n\t{x: new Date('${timestamp}'), y: ${plat}},`;
-            }
-            s += `\n]`;
-            console.log(s);
-
-            new Chartist.Line('#RQ-hub-chart-plat', {
+        
+        function __showChart (elem, name = '', data = []) {
+            new Chartist.Line(elem, {
                 series: [
                     {
-                        name: 'Personal plat levels',
-                        data: platData,
+                        name: name,
+                        data: data,
                     },
                 ],
             }, {
@@ -597,10 +587,38 @@
                     }
                 },
                 lineSmooth: Chartist.Interpolation.simple(),
-                showPoint: false,
+                // showPoint: false,
                 low: 0,
                 showArea: false,
+                plugins: [
+                    Chartist.plugins.tooltip({
+                        tooltipFnc: function(meta, value) {
+                            let [_, plat] = value.split(',');
+                            return parseInt(plat).format();
+                        }
+                    })
+                ]
             });
+        }
+
+        function _showCharts () {
+            __hubToggleTo('#RQ-hub-charts-wrapper');
+            let platData = [];
+            for (let timestamp in tracker.platinum) {
+                if (!tracker.platinum.hasOwnProperty(timestamp)) {
+                    continue;
+                }
+                if (timestamp < (Date.now() - 2 * 7 * 24 * 60 * 60 * 1000)) {
+                    delete tracker.platinum[timestamp];
+                    continue;
+                }
+                let plat = tracker.platinum[timestamp];
+                platData.push({
+                    x: new Date(timestamp),
+                    y: plat
+                });
+            }
+            __showChart('#RQ-hub-chart-plat', 'Plat gains', platData);
         }
 
         //window.onload = __setup;
