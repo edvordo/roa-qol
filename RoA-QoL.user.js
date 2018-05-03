@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.4
+// @version      1.0.5
 // @description  try to take over the world!
 // @author       Reltorakii
-// @match        https://*.avabur.com/game*
+// @match        http*://*.avabur.com/game*
 // @resource     ChartistCSS        https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
 // @resource     ChartistTTipCSS    https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.css
+// @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.js
 // @require      https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.min.js
@@ -28,6 +29,8 @@
             roomNameMap: {},
         };
 
+        let gameTime = moment().tz("America/New_York");
+
         let trackerSaveKey = 'QoLTracker';
         let tracker = {
             platinum: {},
@@ -35,11 +38,15 @@
 
         let FI;
 
+        const INTERNAL_UPDATE_URI   = "https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js";
+
         let username;
 
         let gems = {};
 
         let platObserver, goldObserver, matsObserver, fragsObeserver;
+
+        let chatDirection = 'up';
 
         let headerHTML = `
             <table id="QoLStats">
@@ -48,25 +55,25 @@
                     <td class="left">XP / h:</td>
                     <td class="right" id="XPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
                 </tr>
-                <tr class="hidden" id="BattleClanXPPerHourTR">
+                <tr class="hidden rq-h rq-battle">
                     <td class="left">Clan XP / h:</td>
                     <td class="right" id="BattleClanXPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
                 </tr>
-                <tr class="hidden" id="BattleGoldPerHourTR">
+                <tr class="hidden rq-h rq-battle">
                     <td class="left">Gold / h:</td>
                     <td class="right" id="BattleGoldPerHour" data-toggle="tooltip" title="0"
                         style="color:#FFD700;"></td>
                 </tr>
-                <tr class="hidden" id="BattleClanGoldPerHourTR">
+                <tr class="hidden rq-h rq-battle">
                     <td class="left">Clan Gold / h:</td>
                     <td class="right" id="BattleClanGoldPerHour" data-toggle="tooltip" title="0"
                         style="color:#FFD700;"></td>
                 </tr>
-                <tr class="hidden" id="TSResourcesPerHourTR">
+                <tr class="hidden rq-h rq-harvest">
                     <td class="left">Res / h:</td>
                     <td class="right" id="TSResourcesPerHour" data-toggle="tooltip" title="0"></td>
                 </tr>
-                <tr class="hidden" id="TSClanResourcesPerHourTR">
+                <tr class="hidden rq-h rq-harvest">
                     <td class="left">Clan Res / h:</td>
                     <td class="right" id="TSClanResourcesPerHour" data-toggle="tooltip" title="0"></td>
                 </tr>
@@ -101,6 +108,7 @@
             s: new Date(),
             b: 0,
             h: 0,
+            ct: 0,
             na: 0,
             PlXPReq: 0,
             FoodXPReq: 0,
@@ -157,7 +165,7 @@
             } else if (minutes > 5) {
                 estimate += `${minutes} minutes`;
             } else {
-                estimate = '< 1minute';
+                estimate = `~${num.toTimeRemaining()}`;
             }
 
             return estimate;
@@ -167,7 +175,7 @@
             // time in miliseconds, a.k.a. Date.now()
             let value = this.valueOf() / 1000;
 
-            let seconds = value % 60;
+            let seconds = Math.floor(value) % 60;
             let minutes = Math.floor(value / 60) % 60;
             let hours = Math.floor(value / 60 / 60) % 60;
 
@@ -192,6 +200,36 @@
 
             return `${Math.round(value)}${markers[index]}`;
         };
+
+
+        function scrollToBottom(selector) {
+            $(selector).animate({
+                scrollTop: $(selector).prop("scrollHeight")
+            });
+        }
+
+        function __checkForUpdate() {
+            let version = "";
+
+            fetch(INTERNAL_UPDATE_URI)
+                .then(response => response.json())
+                .then(data => {
+                    let match = atob(data.content).match(/\/\/\s+@version\s+([^\n]+)/);
+                    version   = match[1];
+
+                    if (compareVersions(GM_info.script.version, version) < 0) {
+                        let message = `<li>[${gameTime.format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
+                        if (chatDirection === "up") {
+                            $("#chatMessageList").prepend(message);
+                        } else {
+                            $("#chatMessageList").append(message);
+                            scrollToBottom('#chatMessageListWrapper');
+                        }
+                    } else {
+                        checkForUpdateTimer = setTimeout(__checkForUpdate, 24 * 60 * 60 * 1000);
+                    }
+                });
+        }
 
         function __setup () {
             log('Starting setup');
@@ -239,9 +277,11 @@
             $('#modalContent').append(hubHTML);
             QoLStats.d.BattleXPPerHour = 0;
             QoLStats.d.TSXPPerHour = 0;
+            QoLStats.d.CTXPPerHour = 0;
 
             __loadHouseInfo();
             __loadTracker();
+            setTimeout(__checkForUpdate, 5E3);
 
             FI = new Favico({animation: 'none'});
             FI.badge(0);
@@ -311,28 +351,20 @@
 
         function __toggleBattle () {
             // log('Switching to battle');
-            for (let x in QoLStats.e) {
-                if (QoLStats.e.hasOwnProperty(x)) {
-                    if (x.match(/^Battle.*TR$/)) {
-                        QoLStats.e[x].removeClass('hidden');
-                    } else if (x.match(/.*TR$/)) {
-                        QoLStats.e[x].addClass('hidden');
-                    }
-                }
-            }
+            $('.rq-h').addClass('hidden');
+            $('.rq-h.rq-battle').removeClass('hidden');
         }
 
         function __toggleTS () {
             // log('Switching to TS');
-            for (let x in QoLStats.e) {
-                if (QoLStats.e.hasOwnProperty(x)) {
-                    if (x.match(/^TS.*TR$/)) {
-                        QoLStats.e[x].removeClass('hidden');
-                    } else if (x.match(/.*TR$/)) {
-                        QoLStats.e[x].addClass('hidden');
-                    }
-                }
-            }
+            $('.rq-h').addClass('hidden');
+            $('.rq-h.rq-harvest').removeClass('hidden');
+        }
+
+        function __toggleCT () {
+            // log('Switching to TS');
+            $('.rq-h').addClass('hidden');
+            // $('.rq-h.rq-harvest').removeClass('hidden');
         }
 
         function __updateFavico (to) {
@@ -361,7 +393,13 @@
                     TSClanResourcesPerHour: {d: '', l: 'Resources', c: data.ca},
                 };
                 count = QoLStats.h;
+            } else if (type === 'Crafting') {
+                map = {
+                    XPPerHour: {d: 'CTXPPerHour', l: 'XP', c: data.xp},
+                };
+                count = QoLStats.ct;
             }
+            // console.log(map);
             for (let e in map) {
                 let ed = map[e].d !== '' ? map[e].d : e;
 
@@ -378,12 +416,6 @@
                 QoLStats.e[e].text((QoLStats.d[ed] / (now - QoLStats.s) * hour).format())
                     .attr({'data-original-title': tmpl.formatQoL(obj)});
             }
-            /*
-            QoLStats.e.XPPerHour.text((QoLStats.d.BattleXPPerHour / (now - QoLStats.s) * hour).format());
-            QoLStats.e.BattleGoldPerHour.text((QoLStats.d.BattleGoldPerHour / (now - QoLStats.s) * hour).format());
-            QoLStats.e.BattleClanXPPerHour.text((QoLStats.d.BattleClanXPPerHour / (now - QoLStats.s) * hour).format());
-            QoLStats.e.BattleClanGoldPerHour.text((QoLStats.d.BattleClanGoldPerHour / (now - QoLStats.s) * hour).format());
-            */
         }
 
         function __battle (data) {
@@ -437,6 +469,27 @@
             __updateFavico(data.p.autos_remaining);
         }
 
+        function __CT (data) {
+            __toggleCT();
+            QoLStats.ct++;
+            if (data.hasOwnProperty('a')) {
+                QoLStats.d.CTXPPerHour += data.a.xp;
+                let token = 'CTXPReq';
+                QoLStats[token] = data.p['crafting'].tnl;
+                let eta;
+                if (data.a.xp === 0) {
+                    eta = 'never';
+                } else {
+                    eta = (QoLStats[token] - data.p['crafting'].xp) / data.a.xp * data.p.next_action;
+                    eta = eta.toTimeEstimate();
+                }
+                QoLStats.e.LevelETA.text(eta);
+            }
+            QoLStats.na = data.p.next_action;
+            __updateStats('Crafting', data.a);
+            __updateFavico(data.p.autos_remaining);
+        }
+
         function __setupLevelRequirements (player) {
             log('Setup level reqs');
             QoLStats.PlXPReq = player.levelCost;
@@ -460,15 +513,24 @@
             }
         }
 
+        function _proccessCraft (message) {
+            if (message.hasOwnProperty('results')) {
+                __CT(message.results);
+            }
+        }
+
         function _proccessLI (data) {
             // dunno yet
             if (data.hasOwnProperty('p')) {
                 __setupLevelRequirements(data.p);
+                if (data.p.hasOwnProperty('chatScroll')) {
+                    _setChatDirection(data.p.chatScroll);
+                }
             }
         }
 
         function _updateMSGLimit (msgBox) {
-            let lng = $(msgBox).text().length;
+            let lng = $(msgBox).text().replace(/\/(w [^\s]+ |r |re |me |m |h |c |t |a |wire.*)/i, '').length;
             $('#chatMessageWrapper').attr('data-limiter', `${lng} / 400`);
         }
 
@@ -621,6 +683,10 @@
             __showChart('#RQ-hub-chart-plat', 'Plat gains', platData);
         }
 
+        function _setChatDirection(dir) {
+            chatDirection = dir;
+        }
+
         //window.onload = __setup;
         window.addEventListener('load', __setup, {once: true});
 
@@ -628,12 +694,14 @@
             //proccess: _proccess,
             proccessBattle: _proccessBattle,
             proccessTS: _proccessTS,
+            proccessCraft: _proccessCraft,
             proccessLoginInfo: _proccessLI,
             proccessHouse: _handleHouseData,
             updateMessageLimit: _updateMSGLimit,
             addFameOwnGemsButton: _fameOwnGems,
             showCharts: _showCharts,
             closeHub: _closeHub,
+            setChatDirection: _setChatDirection,
         };
     })(window);
 
@@ -643,6 +711,10 @@
 
     $(document).on('roa-ws:harvest', function (e, data) {
         QoL.proccessTS(data);
+    });
+
+    $(document).on('roa-ws:craft', function (e, data) {
+        QoL.proccessCraft(data);
     });
 
     $(document).on('roa-ws:login_info', function (e, data) {
@@ -655,6 +727,12 @@
 
     $(document).on('roa-ws:page:house_room', function (e, data) {
         QoL.proccessHouse('room', data);
+    });
+
+    $(document).on('roa-ws:page:settings_preferences, roa-ws:page:settings_preferences_change', function (e, d) {
+        // 12 is the relevant option ..
+        // d.preferences[12] can be "0" or "1" (yes, string) => 0 - default, 1 - retarded
+        QoL.setChatDirection(d.preferences[12] === '1' ? 'down' : 'up');
     });
 
     /*$(document).on("roa-ws:message", function(e, data){
