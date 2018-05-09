@@ -81,7 +81,7 @@
         <h3 class="text-center">${resName} gains</h3>
         <div class="text-center" iD="RQ-hub-chart-${resName.toLowerCase()}-subtitle"></div>
         <div id="RQ-hub-chart-${resName.toLowerCase()}" style="width:100%;height:300px;"></div>
-        <table id="RQ-hub-stats-${resName.toLowerCase()}" class="table table-condensed">
+        <table id="RQ-hub-stats-${resName.toLowerCase()}" class="table table-condensed table-bordered">
             <caption class="text-center"></caption>
             <thead>
                 <tr>
@@ -344,6 +344,12 @@
         }
         .dygraph-axis-label {
             color: #fff;
+        }
+        div#RQ-hub-charts-wrapper table thead th {
+            background-image: linear-gradient(to bottom,var(--header-gradient-first-color) 0,var(--header-gradient-second-color) 100%);
+        }
+        div#RQ-hub-charts-wrapper table, div#RQ-hub-charts-wrapper table * {
+            border-color: var(--border-color);
         }
         `).appendTo('body');
             $('<td>').append(headerHTML)
