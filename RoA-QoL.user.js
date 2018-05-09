@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.5
+// @version      1.0.6-beta
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        http*://*.avabur.com/game*
@@ -13,6 +13,7 @@
 // @require      https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
+// @grant        GM_info
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -20,7 +21,7 @@
 (function (window, $) {
 
     function log (message) {
-        console.log(`[${(new Date).toLocaleTimeString()}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
+        console.log(`[${moment().format('MMM Do YYY HH:mm:ss')}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
     }
 
     let QoL = (function QoL () {
@@ -29,24 +30,60 @@
             roomNameMap: {},
         };
 
-        let gameTime = moment().tz("America/New_York");
-
         let trackerSaveKey = 'QoLTracker';
         let tracker = {
             platinum: {},
+            gold: {},
+            mats: {},
+            frags: {},
+            food: {},
+            wood: {},
+            iron: {},
+            stone: {},
         };
+
+        let gameTimeZone = 'America/New_York';
 
         let FI;
 
-        const INTERNAL_UPDATE_URI   = "https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js";
+        const INTERNAL_UPDATE_URI = 'https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js';
 
         let username;
 
         let gems = {};
 
-        let platObserver, goldObserver, matsObserver, fragsObeserver;
+        // let platObserver, goldObserver, matsObserver, fragsObeserver;
 
         let chatDirection = 'up';
+
+        let chartsContentTmpl = '';
+        let chartsTabsTmpl = '';
+
+        let trackedStuff = ['Platinum', 'Gold', 'Mats', 'Frags', 'Food', 'Wood', 'Iron', 'Stone'];
+        let trackedStuffLC = trackedStuff.map(i => i.toLowerCase());
+
+        for (let resName of trackedStuff) {
+            chartsTabsTmpl += `<li class="${resName === 'Platinum' ? 'active' : ''}">
+    <a href="#RQ-hub-${resName.toLowerCase()}-chart-tab" data-resname="${resName.toLowerCase()}">${resName}</a>
+</li>`;
+            chartsContentTmpl += `
+    <div class="tab-pane ${resName === 'Platinum' ? 'active' : ''}" id="RQ-hub-${resName.toLowerCase()}-chart-tab">
+        <h3 class="text-center">${resName} gains</h3>
+        <div class="text-center" iD="RQ-hub-chart-${resName.toLowerCase()}-subtitle"></div>
+        <div id="RQ-hub-chart-${resName.toLowerCase()}"></div>
+        <table id="RQ-hub-stats-${resName.toLowerCase()}" class="table table-condensed">
+            <caption class="text-center"></caption>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">${resName} / h</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>`;
+        }
 
         let headerHTML = `
             <table id="QoLStats">
@@ -96,8 +133,8 @@
     <hr>
     <div id="RQ-hub-sections">
         <div id="RQ-hub-charts-wrapper" style="display: none;">
-            <h3 class="text-center">Plat gains</h3>
-            <div id="RQ-hub-chart-plat"></div>
+            <ul class="nav nav-tabs" id="RQ-hub-charts-tabs">${chartsTabsTmpl}</ul>
+            <div class="tab-content">${chartsContentTmpl}</div>
         </div>
     </div>
 </div>`;
@@ -187,7 +224,7 @@
             return result.join(' ');
         };
 
-        Number.prototype.abbr = function() {
+        Number.prototype.abbr = function () {
             let value = this.valueOf();
 
             let markers = ['', 'k', 'M', 'B', 'T', 'Qa', 'Qi', 'S', 'O', 'N', 'Dd'];
@@ -195,34 +232,33 @@
             let index = 0;
             while (value >= 1000) {
                 index++;
-                value /= 1000
+                value /= 1000;
             }
 
             return `${Math.round(value)}${markers[index]}`;
         };
 
-
-        function scrollToBottom(selector) {
+        function scrollToBottom (selector) {
             $(selector).animate({
-                scrollTop: $(selector).prop("scrollHeight")
+                scrollTop: $(selector).prop('scrollHeight'),
             });
         }
 
-        function __checkForUpdate() {
-            let version = "";
+        function __checkForUpdate () {
+            let version = '';
 
             fetch(INTERNAL_UPDATE_URI)
                 .then(response => response.json())
                 .then(data => {
                     let match = atob(data.content).match(/\/\/\s+@version\s+([^\n]+)/);
-                    version   = match[1];
+                    version = match[1];
 
                     if (compareVersions(GM_info.script.version, version) < 0) {
-                        let message = `<li>[${gameTime.format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
-                        if (chatDirection === "up") {
-                            $("#chatMessageList").prepend(message);
+                        let message = `<li>[${moment.tz(gameTimeZone).format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
+                        if (chatDirection === 'up') {
+                            $('#chatMessageList').prepend(message);
                         } else {
-                            $("#chatMessageList").append(message);
+                            $('#chatMessageList').append(message);
                             scrollToBottom('#chatMessageListWrapper');
                         }
                     } else {
@@ -264,6 +300,16 @@
         table#QoLStats tbody tr td:first-child {
             white-space: nowrap;
             overflow: hidden;
+        }
+        ul#RQ-hub-charts-tabs a {
+            text-decoration: none;
+        }
+        ul#RQ-hub-charts-tabs li.active a, ul#RQ-hub-charts-tabs li a:hover {
+            background: var(--btn-background-color);
+            color: #fff;
+        }
+        div#RQ-hub-wrapper div.tab-pane.active {
+            color: #fff;
         }
         `).appendTo('body');
             $('<td>').append(headerHTML)
@@ -408,7 +454,7 @@
                     total: QoLStats.d[ed].format(),
                     label: map[e].l,
                     count: count.format(),
-                    since: QoLStats.s.toLocaleString(),
+                    since: moment.tz(QoLStats.s, gameTimeZone).format('MMM Do YYYY HH:mm:ss'),
                     type: `${type} actions`,
                     wannabe: (Math.floor(hour / QoLStats.na * map[e].c)).format(),
                 };
@@ -551,6 +597,125 @@
             o.observe(document.querySelector('td.myplatinum'), {attributes: true, attributeOldValue: true});
         }
 
+        function __goldObserver () {
+            log('Starting gold observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.gold[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.mygold'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __matsObserver () {
+            log('Starting mats observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.mats[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.mycrafting_materials'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __fragsObserver () {
+            log('Starting fragsobserver');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.frags[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.mygem_fragments'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __foodObserver () {
+            log('Starting food observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.food[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.myfood'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __woodObserver () {
+            log('Starting wood observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.wood[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.mywood'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __ironObserver () {
+            log('Starting iron observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.iron[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.myiron'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __stoneObserver () {
+            log('Starting stone observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'title') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.stone[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td.mystone'), {attributes: true, attributeOldValue: true});
+        }
+
         function __saveTracker () {
             localStorage.setItem(trackerSaveKey, JSON.stringify(tracker));
         }
@@ -566,9 +731,37 @@
                     _tracker = tracker;
                 }
                 tracker = _tracker;
+                if (!tracker.hasOwnProperty('gold')) {
+                    tracker['gold'] = {};
+                }
+                if (!tracker.hasOwnProperty('mats')) {
+                    tracker['mats'] = {};
+                }
+                if (!tracker.hasOwnProperty('frags')) {
+                    tracker['frags'] = {};
+                }
+                if (!tracker.hasOwnProperty('food')) {
+                    tracker['food'] = {};
+                }
+                if (!tracker.hasOwnProperty('wood')) {
+                    tracker['wood'] = {};
+                }
+                if (!tracker.hasOwnProperty('iron')) {
+                    tracker['iron'] = {};
+                }
+                if (!tracker.hasOwnProperty('stone')) {
+                    tracker['stone'] = {};
+                }
                 __saveTracker();
             }
             __platObserver();
+            __goldObserver();
+            __matsObserver();
+            __fragsObserver();
+            __foodObserver();
+            __woodObserver();
+            __ironObserver();
+            __stoneObserver();
         }
 
         function __registerFameOwnGemTableObserver () {
@@ -626,7 +819,7 @@
             $('#RQ-hub-wrapper').hide();
             __hubToggleTo();
         }
-        
+
         function __showChart (elem, name = '', data = []) {
             new Chartist.Line(elem, {
                 series: [
@@ -640,13 +833,13 @@
                     type: Chartist.FixedScaleAxis,
                     divisor: 10,
                     labelInterpolationFnc: function (value) {
-                        return moment(value).format('MMM D HH:mm');
+                        return moment.tz(value, gameTimeZone).format('MMM Do HH:mm');
                     },
                 },
                 axisY: {
-                    labelInterpolationFnc(value) {
+                    labelInterpolationFnc (value) {
                         return value.abbr();
-                    }
+                    },
                 },
                 lineSmooth: Chartist.Interpolation.simple(),
                 // showPoint: false,
@@ -654,36 +847,111 @@
                 showArea: false,
                 plugins: [
                     Chartist.plugins.tooltip({
-                        tooltipFnc: function(meta, value) {
-                            let [_, plat] = value.split(',');
-                            return parseInt(plat).format();
-                        }
-                    })
-                ]
+                        tooltipFnc: function (meta, value) {
+                            let [ts, res] = value.split(',');
+                            return parseInt(res).format();
+                        },
+                    }),
+                ],
             });
         }
 
-        function _showCharts () {
-            __hubToggleTo('#RQ-hub-charts-wrapper');
-            let platData = [];
-            for (let timestamp in tracker.platinum) {
-                if (!tracker.platinum.hasOwnProperty(timestamp)) {
-                    continue;
-                }
-                if (timestamp < (Date.now() - 2 * 7 * 24 * 60 * 60 * 1000)) {
-                    delete tracker.platinum[timestamp];
-                    continue;
-                }
-                let plat = tracker.platinum[timestamp];
-                platData.push({
-                    x: new Date(timestamp),
-                    y: plat
-                });
+        function __showTrackerStats (section) {
+            let stats = {d: {}};
+            let data = tracker[section];
+            let keys = Object.keys(data);
+            if (keys.length === 0) {
+                return;
             }
-            __showChart('#RQ-hub-chart-plat', 'Plat gains', platData);
+            let firstTS = keys.shift();
+            let was = data[firstTS];
+            let lastTS = firstTS;
+            let totalRes = 0;
+            for (let time in data) {
+                lastTS = time;
+                let resVal = data[time] - was;
+                if (resVal < 0) {
+                    resVal = 0;
+                }
+                totalRes += resVal;
+                was = data[time];
+                let dt = moment.tz(time, gameTimeZone);
+
+                let dayKey = `${dt.format('MMM Do')}`;
+                if (!stats.d.hasOwnProperty(dayKey)) {
+                    stats.d[dayKey] = {t: 0, ph: 0};
+                }
+                stats.d[dayKey].t += resVal;
+                stats.d[dayKey].ph = stats.d[dayKey].t / 24;
+            }
+            let summary = `${moment.tz(firstTS, gameTimeZone).format('MMM Do HH:mm')}`;
+                summary += ` - `;
+                summary += `${moment.tz(lastTS, gameTimeZone).format('MMM Do HH:mm')}`;
+            document.querySelector(`#RQ-hub-chart-${section}-subtitle`).textContent = summary;
+
+            console.log(totalRes);
+            console.log(moment(lastTS).valueOf() - moment(firstTS).valueOf());
+            let perDayStat = `~${(totalRes / ((moment(lastTS).valueOf() - moment(firstTS).valueOf()) / (60 * 60 * 24 * 1000))).format(3)} / day`;
+            document.querySelector(`table#RQ-hub-stats-${section} > caption`).textContent = perDayStat;
+            let resStatsTableBody = document.querySelector(`table#RQ-hub-stats-${section} > tbody`);
+                resStatsTableBody.innerHTML = '';
+            for (let date in stats.d) {
+                let stat = stats.d[date];
+                let tr = document.createElement('tr');
+
+                let td;
+
+                td = document.createElement('td');
+                td.textContent = date;
+                tr.appendChild(td);
+
+                td = document.createElement('td');
+                td.classList.add('text-right');
+                td.textContent = stat.t.format();
+                tr.appendChild(td);
+
+                td = document.createElement('td');
+                td.classList.add('text-right');
+                td.textContent = `~${stat.ph.format(3)} / h`;
+                tr.appendChild(td);
+
+                resStatsTableBody.appendChild(tr);
+            }
         }
 
-        function _setChatDirection(dir) {
+        function _showCharts (one = null) {
+            __hubToggleTo('#RQ-hub-charts-wrapper');
+            let twoWeeksago = moment.tz(gameTimeZone).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00');
+
+            list = trackedStuffLC;
+            if (one !== null && trackedStuffLC.indexOf(one) !== -1) {
+                list = [one];
+            }
+
+            for (let res of list) {
+                let resData = [];
+                for (let timestamp in tracker[res]) {
+                    if (!tracker[res].hasOwnProperty(timestamp)) {
+                        continue;
+                    }
+                    let rts = moment.tz(timestamp, gameTimeZone).format('YYYY-MM-DD HH:mm:ss');
+                    if (rts < twoWeeksago) {
+                        delete tracker[res][timestamp];
+                        continue;
+                    }
+                    let resValue = tracker[res][timestamp];
+                    resData.push({
+                        x: moment.tz(timestamp, gameTimeZone).toDate(),
+                        y: resValue,
+                    });
+                }
+                __saveTracker();
+                __showChart('#RQ-hub-chart-' + res,  res + ' gains', resData);
+                __showTrackerStats(res);
+            }
+        }
+
+        function _setChatDirection (dir) {
             chatDirection = dir;
         }
 
@@ -762,11 +1030,17 @@
         $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
     });
 
-    $(document).on('click', '#modalBackground', function() {
+    $(document).on('click', '#modalBackground', function () {
         QoL.closeHub();
     });
 
     $(document).on('click', '#RQ-hub-charts', function () {
         QoL.showCharts();
+    });
+
+    $(document).on('click', '#RQ-hub-charts-tabs a', function (e) {
+        e.preventDefault();
+        QoL.showCharts($(this).data('resname'));
+        $(this).tab('show');
     });
 })(window, jQuery);
