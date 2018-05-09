@@ -4,7 +4,8 @@
 // @version      1.0.6-beta-2
 // @description  try to take over the world!
 // @author       Reltorakii
-// @match        http*://*.avabur.com/game*
+// @match        https://*.avabur.com/game*
+// @match        http://*.avabur.com/game*
 // @resource     DygraphCSS        https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css
 // @resource     ChartistCSS        https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
 // @resource     ChartistTTipCSS    https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.css
