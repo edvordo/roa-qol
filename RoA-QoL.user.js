@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.6-beta
+// @version      1.0.6-beta-2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        http*://*.avabur.com/game*
+// @resource     DygraphCSS        https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css
 // @resource     ChartistCSS        https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
 // @resource     ChartistTTipCSS    https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.css
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js
 // @require      https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.js
 // @require      https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
@@ -21,7 +23,7 @@
 (function (window, $) {
 
     function log (message) {
-        console.log(`[${moment().format('MMM Do YYY HH:mm:ss')}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
+        console.log(`[${moment().format('MMM Do Y HH:mm:ss')}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
     }
 
     let QoL = (function QoL () {
@@ -40,6 +42,10 @@
             wood: {},
             iron: {},
             stone: {},
+            strength: {},
+            health: {},
+            coordination: {},
+            agility: {},
         };
 
         let gameTimeZone = 'America/New_York';
@@ -60,17 +66,21 @@
         let chartsTabsTmpl = '';
 
         let trackedStuff = ['Platinum', 'Gold', 'Mats', 'Frags', 'Food', 'Wood', 'Iron', 'Stone'];
+        let trackedStuffDD = ['Strength', 'Health', 'Coordination', 'Agility'];
         let trackedStuffLC = trackedStuff.map(i => i.toLowerCase());
+        let trackedStuffDDLC = trackedStuffDD.map(i => i.toLowerCase());
 
-        for (let resName of trackedStuff) {
-            chartsTabsTmpl += `<li class="${resName === 'Platinum' ? 'active' : ''}">
+        for (let resName of trackedStuff.concat(trackedStuffDD)) {
+            if (trackedStuffDD.indexOf(resName) === -1) {
+                chartsTabsTmpl += `<li class="${resName === 'Platinum' ? 'active' : ''}">
     <a href="#RQ-hub-${resName.toLowerCase()}-chart-tab" data-resname="${resName.toLowerCase()}">${resName}</a>
 </li>`;
+            }
             chartsContentTmpl += `
     <div class="tab-pane ${resName === 'Platinum' ? 'active' : ''}" id="RQ-hub-${resName.toLowerCase()}-chart-tab">
         <h3 class="text-center">${resName} gains</h3>
         <div class="text-center" iD="RQ-hub-chart-${resName.toLowerCase()}-subtitle"></div>
-        <div id="RQ-hub-chart-${resName.toLowerCase()}"></div>
+        <div id="RQ-hub-chart-${resName.toLowerCase()}" style="width:100%;height:300px;"></div>
         <table id="RQ-hub-stats-${resName.toLowerCase()}" class="table table-condensed">
             <caption class="text-center"></caption>
             <thead>
@@ -80,10 +90,25 @@
                     <th class="text-right">${resName} / h</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+                <tr>
+                    <td colspan="3"><em>No available data</em></td>
+                </tr>
+            </tbody>
         </table>
     </div>`;
         }
+
+        chartsTabsTmpl += `<li class="dropdown">
+    <a href="#" data-toggle="dropdown">Base Stats <span class="caret"></span></a>
+        <ul class="dropdown-menu">`;
+        for (let resName of trackedStuffDD) {
+
+            chartsTabsTmpl += `<li class="">
+    <a href="#RQ-hub-${resName.toLowerCase()}-chart-tab" data-resname="${resName.toLowerCase()}">${resName}</a>
+</li>`;
+        }
+        chartsTabsTmpl += `</ul></li>`
 
         let headerHTML = `
             <table id="QoLStats">
@@ -235,7 +260,7 @@
                 value /= 1000;
             }
 
-            return `${Math.round(value)}${markers[index]}`;
+            return `${Math.floor(value * 10) / 10}${markers[index]}`;
         };
 
         function scrollToBottom (selector) {
@@ -311,6 +336,15 @@
         div#RQ-hub-wrapper div.tab-pane.active {
             color: #fff;
         }
+        .dygraph-legend {
+            background: var(--btn-background-color);
+        }
+        .dygraph-legend > span {
+            display: block;
+        }
+        .dygraph-axis-label {
+            color: #fff;
+        }
         `).appendTo('body');
             $('<td>').append(headerHTML)
                 .addClass('col-xs-2 hidden-xs hidden-sm')
@@ -321,6 +355,7 @@
                 QoLStats.d[e.attr('id')] = 0;
             });
             $('#modalContent').append(hubHTML);
+            $('#RQ-hub-wrapper .dropdown-toggle').dropdown()
             QoLStats.d.BattleXPPerHour = 0;
             QoLStats.d.TSXPPerHour = 0;
             QoLStats.d.CTXPPerHour = 0;
@@ -336,6 +371,7 @@
                 .tooltip({placement: 'auto left', container: 'body', html: true});
             $('#chatMessageWrapper').attr('data-limiter', '0 / 400');
             username = $('#username').text();
+            GM_addStyle(GM_getResourceText('DygraphCSS'));
             GM_addStyle(GM_getResourceText('ChartistCSS'));
             GM_addStyle(GM_getResourceText('ChartistTTipCSS'));
         }
@@ -454,7 +490,7 @@
                     total: QoLStats.d[ed].format(),
                     label: map[e].l,
                     count: count.format(),
-                    since: moment.tz(QoLStats.s, gameTimeZone).format('MMM Do YYYY HH:mm:ss'),
+                    since: moment.tz(QoLStats.s, gameTimeZone).format('MMM Do Y HH:mm:ss'),
                     type: `${type} actions`,
                     wannabe: (Math.floor(hour / QoLStats.na * map[e].c)).format(),
                 };
@@ -716,6 +752,74 @@
             o.observe(document.querySelector('td.mystone'), {attributes: true, attributeOldValue: true});
         }
 
+        function __strengthObserver () {
+            log('Starting stat strength observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.strength[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td#strength'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __healthObserver () {
+            log('Starting stat health observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.health[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td#health'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __coordinationObserver () {
+            log('Starting stat coordination observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.coordination[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td#coordination'), {attributes: true, attributeOldValue: true});
+        }
+
+        function __agilityObserver () {
+            log('Starting stat agility observer');
+            let o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
+                        let oldValue = m.oldValue;
+                        let nowValue = m.target.getAttribute(m.attributeName);
+                        if (oldValue && nowValue && oldValue !== nowValue) {
+                            tracker.agility[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                            __saveTracker();
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('td#agility'), {attributes: true, attributeOldValue: true});
+        }
+
         function __saveTracker () {
             localStorage.setItem(trackerSaveKey, JSON.stringify(tracker));
         }
@@ -752,6 +856,18 @@
                 if (!tracker.hasOwnProperty('stone')) {
                     tracker['stone'] = {};
                 }
+                if (!tracker.hasOwnProperty('strength')) {
+                    tracker['strength'] = {};
+                }
+                if (!tracker.hasOwnProperty('health')) {
+                    tracker['health'] = {};
+                }
+                if (!tracker.hasOwnProperty('coordination')) {
+                    tracker['coordination'] = {};
+                }
+                if (!tracker.hasOwnProperty('agility')) {
+                    tracker['agility'] = {};
+                }
                 __saveTracker();
             }
             __platObserver();
@@ -762,6 +878,10 @@
             __woodObserver();
             __ironObserver();
             __stoneObserver();
+            __strengthObserver();
+            __healthObserver();
+            __coordinationObserver();
+            __agilityObserver();
         }
 
         function __registerFameOwnGemTableObserver () {
@@ -821,39 +941,53 @@
         }
 
         function __showChart (elem, name = '', data = []) {
-            new Chartist.Line(elem, {
-                series: [
-                    {
-                        name: name,
-                        data: data,
-                    },
-                ],
-            }, {
-                axisX: {
-                    type: Chartist.FixedScaleAxis,
-                    divisor: 10,
-                    labelInterpolationFnc: function (value) {
-                        return moment.tz(value, gameTimeZone).format('MMM Do HH:mm');
-                    },
-                },
-                axisY: {
-                    labelInterpolationFnc (value) {
-                        return value.abbr();
-                    },
-                },
-                lineSmooth: Chartist.Interpolation.simple(),
-                // showPoint: false,
-                low: 0,
-                showArea: false,
-                plugins: [
-                    Chartist.plugins.tooltip({
-                        tooltipFnc: function (meta, value) {
-                            let [ts, res] = value.split(',');
-                            return parseInt(res).format();
+            if (data.length) {
+                new Dygraph(document.querySelector(elem), data, {
+                    labels: ['Time', name],
+                    axes: {
+                        y: {
+                            valueFormatter: val => val.format(),
+                            axisLabelFormatter: val => val.abbr(),
                         },
-                    }),
-                ],
-            });
+                        x: {
+                            valueFormatter: val => moment.tz(val, gameTimeZone).format('MMM Do HH:mm:ss'),
+                        }
+                    }
+                });
+            }
+            // new Chartist.Line(elem, {
+            //     series: [
+            //         {
+            //             name: name,
+            //             data: data,
+            //         },
+            //     ],
+            // }, {
+            //     axisX: {
+            //         type: Chartist.FixedScaleAxis,
+            //         divisor: 10,
+            //         labelInterpolationFnc: function (value) {
+            //             return moment.tz(value, gameTimeZone).format('MMM Do HH:mm');
+            //         },
+            //     },
+            //     axisY: {
+            //         labelInterpolationFnc (value) {
+            //             return value.abbr();
+            //         },
+            //     },
+            //     lineSmooth: Chartist.Interpolation.simple(),
+            //     // showPoint: false,
+            //     low: 0,
+            //     showArea: false,
+            //     plugins: [
+            //         Chartist.plugins.tooltip({
+            //             tooltipFnc: function (meta, value) {
+            //                 let [ts, res] = value.split(',');
+            //                 return parseInt(res).format();
+            //             },
+            //         }),
+            //     ],
+            // });
         }
 
         function __showTrackerStats (section) {
@@ -889,8 +1023,6 @@
                 summary += `${moment.tz(lastTS, gameTimeZone).format('MMM Do HH:mm')}`;
             document.querySelector(`#RQ-hub-chart-${section}-subtitle`).textContent = summary;
 
-            console.log(totalRes);
-            console.log(moment(lastTS).valueOf() - moment(firstTS).valueOf());
             let perDayStat = `~${(totalRes / ((moment(lastTS).valueOf() - moment(firstTS).valueOf()) / (60 * 60 * 24 * 1000))).format(3)} / day`;
             document.querySelector(`table#RQ-hub-stats-${section} > caption`).textContent = perDayStat;
             let resStatsTableBody = document.querySelector(`table#RQ-hub-stats-${section} > tbody`);
@@ -923,8 +1055,8 @@
             __hubToggleTo('#RQ-hub-charts-wrapper');
             let twoWeeksago = moment.tz(gameTimeZone).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00');
 
-            list = trackedStuffLC;
-            if (one !== null && trackedStuffLC.indexOf(one) !== -1) {
+            list = trackedStuffLC.concat(trackedStuffDDLC);
+            if (one !== null && list.indexOf(one) !== -1) {
                 list = [one];
             }
 
@@ -940,13 +1072,13 @@
                         continue;
                     }
                     let resValue = tracker[res][timestamp];
-                    resData.push({
-                        x: moment.tz(timestamp, gameTimeZone).toDate(),
-                        y: resValue,
-                    });
+                    resData.push([
+                        moment.tz(timestamp, gameTimeZone).toDate(),
+                        resValue,
+                    ]);
                 }
                 __saveTracker();
-                __showChart('#RQ-hub-chart-' + res,  res + ' gains', resData);
+                __showChart('#RQ-hub-chart-' + res,  res, resData);
                 __showTrackerStats(res);
             }
         }
@@ -1040,7 +1172,9 @@
 
     $(document).on('click', '#RQ-hub-charts-tabs a', function (e) {
         e.preventDefault();
-        QoL.showCharts($(this).data('resname'));
-        $(this).tab('show');
+        if ($(this).data('resname')) {
+            $(this).tab('show');
+            QoL.showCharts($(this).data('resname'));
+        }
     });
 })(window, jQuery);
