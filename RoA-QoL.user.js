@@ -1274,7 +1274,7 @@
         QoL.showStats();
     });
 
-    $(document).on('click', '#RQ-hub-RQ-hub-settings', function () {
+    $(document).on('click', '#RQ-hub-settings', function () {
         QoL.showSettings();
     });
 })(window, jQuery);
