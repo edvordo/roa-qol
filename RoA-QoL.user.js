@@ -177,9 +177,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td colspan="6" class="text-center"><em>No available data</em></td>
-                    </tr>
                 </tbody>
             </table>
         </div>
@@ -385,6 +382,7 @@
                 QoLStats.d[e.attr('id')] = 0;
             });
             $('#modalContent').append(hubHTML);
+            $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false})
             $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
             QoLStats.d.BattleXPPerHour = 0;
             QoLStats.d.TSXPPerHour = 0;
@@ -1131,14 +1129,14 @@
                     moment.tz(values.s, gameTimeZone).toDate(),
                     values.dmg / values.a,
                 ]);
-                tableData.push({
-                    s: moment.tz(values.s, gameTimeZone).format('MMM Do HH:mm'),
-                    b: parseInt(baseStr).format(),
-                    t: values.total.format(),
-                    d: values.dmg.format(),
-                    a: values.a.format(),
-                    avg: (values.dmg / values.a).format(),
-                });
+                tableData.push([
+                    moment.tz(values.s, gameTimeZone).format('MMM Do HH:mm'),
+                    parseInt(baseStr).format(),
+                    values.total.format(),
+                    values.dmg.format(),
+                    values.a.format(),
+                    (values.dmg / values.a).format(),
+                ]);
             }
 
             if (chartData.length) {
@@ -1157,51 +1155,13 @@
             }
 
             if (tableData.length) {
-                statTableBody.innerHTML = '';
-
-                /*
-                        <th>Since</th>
-                        <th>Base strength</th>
-                        <th>Total strength</th>
-                        <th>Total damage</th>
-                        <th>Actions</th>
-                        <th>AVG damage</th>
-                 */
+                let dt = $('#RQ-hub-stats-avg-dmg-data').DataTable();
+                dt.clear();
                 for (let item of tableData) {
-                    let tr = document.createElement('tr');
-
-                    let td;
-                    td = document.createElement('td');
-                    td.textContent = item.s;
-                    tr.appendChild(td);
-
-                    td = document.createElement('td');
-                    td.textContent = item.b;
-                    td.classList.add('text-right');
-                    tr.appendChild(td);
-
-                    td = document.createElement('td');
-                    td.textContent = item.t;
-                    td.classList.add('text-right');
-                    tr.appendChild(td);
-
-                    td = document.createElement('td');
-                    td.textContent = item.d;
-                    td.classList.add('text-right');
-                    tr.appendChild(td);
-
-                    td = document.createElement('td');
-                    td.textContent = item.a;
-                    td.classList.add('text-right');
-                    tr.appendChild(td);
-
-                    td = document.createElement('td');
-                    td.textContent = item.avg;
-                    td.classList.add('text-right');
-                    tr.appendChild(td);
-
-                    statTableBody.appendChild(tr);
+                    console.log(item);
+                    dt.row.add(item);
                 }
+                dt.draw();
             }
         }
 

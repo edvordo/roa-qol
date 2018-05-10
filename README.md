@@ -12,3 +12,4 @@ Also, an install into a Tampermonkey/Greasemonkey is kinda recommended, since th
 * [Char count in chat message (max enforced by game is 400)](https://i.imgur.com/68lVp0F.png)
 * [Stamina remaining/Fatigue favicon counter](https://i.imgur.com/qyYmmzT.png)
 * [One-click fame-own gems](https://i.imgur.com/1fZFifw.png)
+* [2 weeks worth of resource gains](https://i.imgur.com/grw0NKV.png)
