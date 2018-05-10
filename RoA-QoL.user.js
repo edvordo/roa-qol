@@ -151,11 +151,15 @@
 
         let hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
     <div class="btn-group">
+        <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
         <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
         <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
     </div>
     <hr>
     <div id="RQ-hub-sections">
+        <div id="RQ-hub-settings-wrapper" style="display: none;">
+            <em>Yea .. at some point, sure .. not for now tho' :)</em>
+        </div>
         <div id="RQ-hub-charts-wrapper" style="display: none;">
             <ul class="nav nav-tabs" id="RQ-hub-charts-tabs">${chartsTabsTmpl}</ul>
             <div class="tab-content">${chartsContentTmpl}</div>
@@ -382,7 +386,7 @@
                 QoLStats.d[e.attr('id')] = 0;
             });
             $('#modalContent').append(hubHTML);
-            $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false})
+            $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false});
             $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
             QoLStats.d.BattleXPPerHour = 0;
             QoLStats.d.TSXPPerHour = 0;
@@ -1165,6 +1169,10 @@
             }
         }
 
+        function _showSettings () {
+            __hubToggleTo('#RQ-hub-settings-wrapper');
+        }
+
         function _setChatDirection (dir) {
             chatDirection = dir;
         }
@@ -1185,6 +1193,7 @@
             closeHub: _closeHub,
             setChatDirection: _setChatDirection,
             showStats: _showStats,
+            showSettings: _showSettings,
         };
     })(window);
 
@@ -1263,5 +1272,9 @@
 
     $(document).on('click', '#RQ-hub-stats', function () {
         QoL.showStats();
+    });
+
+    $(document).on('click', '#RQ-hub-RQ-hub-settings', function () {
+        QoL.showSettings();
     });
 })(window, jQuery);
