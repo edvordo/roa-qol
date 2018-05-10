@@ -1,19 +1,15 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.6-beta-2
+// @version      1.0.6-beta-3
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
 // @resource     DygraphCSS        https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css
-// @resource     ChartistCSS        https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.css
-// @resource     ChartistTTipCSS    https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.css
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js
-// @require      https://cdn.rawgit.com/gionkunz/chartist-js/v0.11.0/dist/chartist.min.js
-// @require      https://cdn.rawgit.com/tmmdata/chartist-plugin-tooltip/v0.0.18/dist/chartist-plugin-tooltip.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
@@ -47,6 +43,7 @@
             health: {},
             coordination: {},
             agility: {},
+            avgDmStrStat: {},
         };
 
         let gameTimeZone = 'America/New_York';
@@ -82,7 +79,7 @@
         <h3 class="text-center">${resName} gains</h3>
         <div class="text-center" iD="RQ-hub-chart-${resName.toLowerCase()}-subtitle"></div>
         <div id="RQ-hub-chart-${resName.toLowerCase()}" style="width:100%;height:300px;"></div>
-        <table id="RQ-hub-stats-${resName.toLowerCase()}" class="table table-condensed table-bordered">
+        <table id="RQ-hub-stats-${resName.toLowerCase()}" class="table table-condensed table-bordered rq-styled">
             <caption class="text-center"></caption>
             <thead>
                 <tr>
@@ -93,7 +90,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="3"><em>No available data</em></td>
+                    <td colspan="3" class="text-center"><em>No available data</em></td>
                 </tr>
             </tbody>
         </table>
@@ -109,7 +106,7 @@
     <a href="#RQ-hub-${resName.toLowerCase()}-chart-tab" data-resname="${resName.toLowerCase()}">${resName}</a>
 </li>`;
         }
-        chartsTabsTmpl += `</ul></li>`
+        chartsTabsTmpl += `</ul></li>`;
 
         let headerHTML = `
             <table id="QoLStats">
@@ -155,12 +152,37 @@
         let hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
     <div class="btn-group">
         <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
+        <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
     </div>
     <hr>
     <div id="RQ-hub-sections">
         <div id="RQ-hub-charts-wrapper" style="display: none;">
             <ul class="nav nav-tabs" id="RQ-hub-charts-tabs">${chartsTabsTmpl}</ul>
             <div class="tab-content">${chartsContentTmpl}</div>
+        </div>
+        <div id="RQ-hub-stats-info-wrapper" style="display: none;">
+            <h3 class="text-center">Strength &raquo; AVG damage</h3>
+            <div class="text-center" iD="RQ-hub-chart-avh-dmg-subtitle"></div>
+            <div id="RQ-hub-chart-avg-dmg" style="width:100%;height:300px;"></div>
+            <table id="RQ-hub-stats-avg-dmg-data" class="table table-condensed table-bordered rq-styled">
+                <caption class="text-center"></caption>
+                <thead>
+                    <tr>
+                        <th>Since</th>
+                        <th>Base strength</th>
+                        <th>Total strength</th>
+                        <th>Total damage</th>
+                        <th>Actions</th>
+                        <th>AVG damage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="text-center"><em>No available data</em></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
         </div>
     </div>
 </div>`;
@@ -346,10 +368,11 @@
         .dygraph-axis-label {
             color: #fff;
         }
-        div#RQ-hub-charts-wrapper table thead th {
+        div#RQ-hub-wrapper table.rq-styled thead th {
             background-image: linear-gradient(to bottom,var(--header-gradient-first-color) 0,var(--header-gradient-second-color) 100%);
         }
-        div#RQ-hub-charts-wrapper table, div#RQ-hub-charts-wrapper table * {
+        div#RQ-hub-wrapper table.rq-styled,
+        div#RQ-hub-wrapper table.rq-styled * {
             border-color: var(--border-color);
         }
         `).appendTo('body');
@@ -362,7 +385,7 @@
                 QoLStats.d[e.attr('id')] = 0;
             });
             $('#modalContent').append(hubHTML);
-            $('#RQ-hub-wrapper .dropdown-toggle').dropdown()
+            $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
             QoLStats.d.BattleXPPerHour = 0;
             QoLStats.d.TSXPPerHour = 0;
             QoLStats.d.CTXPPerHour = 0;
@@ -507,6 +530,29 @@
             }
         }
 
+        function __logAvgDmg (battle) {
+            if (battle.b.r === 0) {
+                return;
+            }
+
+            let dmgType = $('#weaponskill').text().split(' ')[0];
+            if (!tracker.avgDmStrStat.hasOwnProperty(dmgType)) {
+                tracker.avgDmStrStat[dmgType] = {};
+            }
+
+            if (!tracker.avgDmStrStat[dmgType].hasOwnProperty(battle.p.strength.base)) {
+                tracker.avgDmStrStat[dmgType][battle.p.strength.base] = {
+                    total: battle.p.strength.total,
+                    dmg: 0,
+                    a: 0,
+                    s: Date.now(),
+                };
+            }
+            tracker.avgDmStrStat[dmgType][battle.p.strength.base].dmg += battle.b.p.dm;
+            tracker.avgDmStrStat[dmgType][battle.p.strength.base].a++;
+            __saveTracker();
+        }
+
         function __battle (data) {
             __toggleBattle();
             QoLStats.b++;
@@ -525,6 +571,7 @@
                     }
                     QoLStats.e.LevelETA.text(eta);
                 }
+                __logAvgDmg(data);
             }
             QoLStats.na = data.p.next_action;
 
@@ -590,25 +637,25 @@
             QoLStats.CarvXPReq = player.carving.tnl;
         }
 
-        function _proccessBattle (message) {
+        function _processBattle (message) {
             if (message.hasOwnProperty('results')) {
                 __battle(message.results);
             }
         }
 
-        function _proccessTS (message) {
+        function _processTS (message) {
             if (message.hasOwnProperty('results')) {
                 __TS(message.results);
             }
         }
 
-        function _proccessCraft (message) {
+        function _processCraft (message) {
             if (message.hasOwnProperty('results')) {
                 __CT(message.results);
             }
         }
 
-        function _proccessLI (data) {
+        function _processLI (data) {
             // dunno yet
             if (data.hasOwnProperty('p')) {
                 __setupLevelRequirements(data.p);
@@ -875,6 +922,9 @@
                 if (!tracker.hasOwnProperty('agility')) {
                     tracker['agility'] = {};
                 }
+                if (!tracker.hasOwnProperty('avgDmStrStat')) {
+                    tracker['avgDmStrStat'] = {};
+                }
                 __saveTracker();
             }
             __platObserver();
@@ -958,43 +1008,10 @@
                         },
                         x: {
                             valueFormatter: val => moment.tz(val, gameTimeZone).format('MMM Do HH:mm:ss'),
-                        }
-                    }
+                        },
+                    },
                 });
             }
-            // new Chartist.Line(elem, {
-            //     series: [
-            //         {
-            //             name: name,
-            //             data: data,
-            //         },
-            //     ],
-            // }, {
-            //     axisX: {
-            //         type: Chartist.FixedScaleAxis,
-            //         divisor: 10,
-            //         labelInterpolationFnc: function (value) {
-            //             return moment.tz(value, gameTimeZone).format('MMM Do HH:mm');
-            //         },
-            //     },
-            //     axisY: {
-            //         labelInterpolationFnc (value) {
-            //             return value.abbr();
-            //         },
-            //     },
-            //     lineSmooth: Chartist.Interpolation.simple(),
-            //     // showPoint: false,
-            //     low: 0,
-            //     showArea: false,
-            //     plugins: [
-            //         Chartist.plugins.tooltip({
-            //             tooltipFnc: function (meta, value) {
-            //                 let [ts, res] = value.split(',');
-            //                 return parseInt(res).format();
-            //             },
-            //         }),
-            //     ],
-            // });
         }
 
         function __showTrackerStats (section) {
@@ -1026,14 +1043,14 @@
                 stats.d[dayKey].ph = stats.d[dayKey].t / 24;
             }
             let summary = `${moment.tz(firstTS, gameTimeZone).format('MMM Do HH:mm')}`;
-                summary += ` - `;
-                summary += `${moment.tz(lastTS, gameTimeZone).format('MMM Do HH:mm')}`;
+            summary += ` - `;
+            summary += `${moment.tz(lastTS, gameTimeZone).format('MMM Do HH:mm')}`;
             document.querySelector(`#RQ-hub-chart-${section}-subtitle`).textContent = summary;
 
             let perDayStat = `~${(totalRes / ((moment(lastTS).valueOf() - moment(firstTS).valueOf()) / (60 * 60 * 24 * 1000))).format(3)} / day`;
             document.querySelector(`table#RQ-hub-stats-${section} > caption`).textContent = perDayStat;
             let resStatsTableBody = document.querySelector(`table#RQ-hub-stats-${section} > tbody`);
-                resStatsTableBody.innerHTML = '';
+            resStatsTableBody.innerHTML = '';
             for (let date in stats.d) {
                 let stat = stats.d[date];
                 let tr = document.createElement('tr');
@@ -1085,8 +1102,106 @@
                     ]);
                 }
                 __saveTracker();
-                __showChart('#RQ-hub-chart-' + res,  res, resData);
+                __showChart('#RQ-hub-chart-' + res, res, resData);
                 __showTrackerStats(res);
+            }
+        }
+
+        function _showStats () {
+            __hubToggleTo('#RQ-hub-stats-info-wrapper');
+
+            let currentSkill = document.querySelector('#weaponskill').textContent.split(' ')[0];
+            let statTableBody = document.querySelector('#RQ-hub-stats-avg-dmg-data tbody');
+            statTableBody.innerHTML = '<tr>\n                    <td colspan="5" class="text-center"><em>No available data</em></td>\n                </tr>';
+
+            if (!tracker.avgDmStrStat.hasOwnProperty(currentSkill)) {
+
+                return;
+            }
+            document.querySelector('#RQ-hub-chart-avh-dmg-subtitle').textContent = currentSkill;
+
+            let chartData = [];
+            let tableData = [];
+            for (let baseStr in tracker.avgDmStrStat[currentSkill]) {
+                if (!tracker.avgDmStrStat[currentSkill].hasOwnProperty(baseStr)) {
+                    continue;
+                }
+                let values = tracker.avgDmStrStat[currentSkill][baseStr];
+                chartData.push([
+                    moment.tz(values.s, gameTimeZone).toDate(),
+                    values.dmg / values.a,
+                ]);
+                tableData.push({
+                    s: moment.tz(values.s, gameTimeZone).format('MMM Do HH:mm'),
+                    b: parseInt(baseStr).format(),
+                    t: values.total.format(),
+                    d: values.dmg.format(),
+                    a: values.a.format(),
+                    avg: (values.dmg / values.a).format(),
+                });
+            }
+
+            if (chartData.length) {
+                new Dygraph(document.querySelector('#RQ-hub-chart-avg-dmg'), chartData, {
+                    labels: ['Time', 'Average damage'],
+                    axes: {
+                        y: {
+                            valueFormatter: val => val.format(),
+                            axisLabelFormatter: val => val.abbr(),
+                        },
+                        x: {
+                            valueFormatter: val => moment.tz(val, gameTimeZone).format('MMM Do HH:mm:ss'),
+                        },
+                    },
+                });
+            }
+
+            if (tableData.length) {
+                statTableBody.innerHTML = '';
+
+                /*
+                        <th>Since</th>
+                        <th>Base strength</th>
+                        <th>Total strength</th>
+                        <th>Total damage</th>
+                        <th>Actions</th>
+                        <th>AVG damage</th>
+                 */
+                for (let item of tableData) {
+                    let tr = document.createElement('tr');
+
+                    let td;
+                    td = document.createElement('td');
+                    td.textContent = item.s;
+                    tr.appendChild(td);
+
+                    td = document.createElement('td');
+                    td.textContent = item.b;
+                    td.classList.add('text-right');
+                    tr.appendChild(td);
+
+                    td = document.createElement('td');
+                    td.textContent = item.t;
+                    td.classList.add('text-right');
+                    tr.appendChild(td);
+
+                    td = document.createElement('td');
+                    td.textContent = item.d;
+                    td.classList.add('text-right');
+                    tr.appendChild(td);
+
+                    td = document.createElement('td');
+                    td.textContent = item.a;
+                    td.classList.add('text-right');
+                    tr.appendChild(td);
+
+                    td = document.createElement('td');
+                    td.textContent = item.avg;
+                    td.classList.add('text-right');
+                    tr.appendChild(td);
+
+                    statTableBody.appendChild(tr);
+                }
             }
         }
 
@@ -1099,41 +1214,42 @@
 
         return {
             //proccess: _proccess,
-            proccessBattle: _proccessBattle,
-            proccessTS: _proccessTS,
-            proccessCraft: _proccessCraft,
-            proccessLoginInfo: _proccessLI,
-            proccessHouse: _handleHouseData,
+            processBattle: _processBattle,
+            processTS: _processTS,
+            processCraft: _processCraft,
+            processLoginInfo: _processLI,
+            processHouse: _handleHouseData,
             updateMessageLimit: _updateMSGLimit,
             addFameOwnGemsButton: _fameOwnGems,
             showCharts: _showCharts,
             closeHub: _closeHub,
             setChatDirection: _setChatDirection,
+            showStats: _showStats,
         };
     })(window);
 
     $(document).on('roa-ws:battle', function (e, data) {
-        QoL.proccessBattle(data);
+        QoL.processBattle(data);
     });
 
     $(document).on('roa-ws:harvest', function (e, data) {
-        QoL.proccessTS(data);
+        QoL.processTS(data);
     });
 
     $(document).on('roa-ws:craft', function (e, data) {
-        QoL.proccessCraft(data);
+        QoL.processCraft(data);
     });
 
     $(document).on('roa-ws:login_info', function (e, data) {
-        QoL.proccessLoginInfo(data);
+        QoL.processLoginInfo(data);
     });
 
     $(document).on('roa-ws:page:house', function (e, data) {
-        QoL.proccessHouse('house', data);
+        QoL.processHouse('house', data);
     });
 
     $(document).on('roa-ws:page:house_room', function (e, data) {
-        QoL.proccessHouse('room', data);
+        QoL.processHouse('room', data);
     });
 
     $(document).on('roa-ws:page:settings_preferences, roa-ws:page:settings_preferences_change', function (e, d) {
@@ -1183,5 +1299,9 @@
             $(this).tab('show');
             QoL.showCharts($(this).data('resname'));
         }
+    });
+
+    $(document).on('click', '#RQ-hub-stats', function () {
+        QoL.showStats();
     });
 })(window, jQuery);
