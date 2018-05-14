@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.6-beta-3
+// @version      1.0.6-beta-4
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
@@ -111,7 +111,7 @@
         let headerHTML = `
             <table id="QoLStats">
                 <tbody>
-                <tr>
+                <tr class="hidden rq-h rq-battle rq-harvest rq-craft rq-carve">
                     <td class="left">XP / h:</td>
                     <td class="right" id="XPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
                 </tr>
@@ -137,9 +137,29 @@
                     <td class="left">Clan Res / h:</td>
                     <td class="right" id="TSClanResourcesPerHour" data-toggle="tooltip" title="0"></td>
                 </tr>
-                <tr>
+                <tr class="hidden rq-h rq-battle rq-harvest rq-craft rq-carve">
                     <td class="left">ETA to level:</td>
                     <td class="right" id="LevelETA" data-toggle="tooltip" title="0"></td>
+                </tr>
+                <tr class="hidden rq-h rq-event-update">
+                    <td class="left">Total participants:</td>
+                    <td class="right" id="EventTotalParticipants"></td>
+                </tr>
+                <tr class="hidden rq-h rq-event-update">
+                    <td class="left">Battlers:</td>
+                    <td class="right" id="EventBattlingParticipants"></td>
+                </tr>
+                <tr class="hidden rq-h rq-event-update">
+                    <td class="left">Havesters:</td>
+                    <td class="right" id="EventHarvestingParticipants"></td>
+                </tr>
+                <tr class="hidden rq-h rq-event-update">
+                    <td class="left">Crafters:</td>
+                    <td class="right" id="EventCraftingParticipants"></td>
+                </tr>
+                <tr class="hidden rq-h rq-event-update">
+                    <td class="left">Carvers:</td>
+                    <td class="right" id="EventCarvingParticipants"></td>
                 </tr>
                 <tr>
                     <td colspan="2" align="center">
@@ -257,7 +277,7 @@
             return estimate;
         };
 
-        Number.prototype.toTimeRemaining = function () {
+        Number.prototype.toTimeRemaining = function (colonDelimited = false) {
             // time in miliseconds, a.k.a. Date.now()
             let value = this.valueOf() / 1000;
 
@@ -270,7 +290,12 @@
             if (minutes > 0) result.push(`${minutes}m`);
             result.push(`${seconds}s`);
 
-            return result.join(' ');
+            return result.map(item => {
+                if (colonDelimited === true) {
+                    return item.replace(/[^0-9]+/g, '');
+                }
+                return item;
+            }).join(colonDelimited === true ? ':' : ' ');
         };
 
         Number.prototype.abbr = function () {
@@ -481,9 +506,16 @@
             // $('.rq-h.rq-harvest').removeClass('hidden');
         }
 
-        function __updateFavico (to) {
+        function __toggleEU () {
+            // log('Switching to TS');
+            $('.rq-h').addClass('hidden');
+            $('.rq-h.rq-event-update').removeClass('hidden');
+        }
+
+        function __updateFavico (to, text = null) {
             let color = to > 0 ? '#050' : '#a00';
-            FI.badge(Math.abs(to), {bgColor: color});
+            let _text = text === null ? Math.abs(to) : text;
+            FI.badge(_text, {bgColor: color});
         }
 
         function __updateStats (type, data) {
@@ -665,6 +697,19 @@
                     _setChatDirection(data.p.chatScroll);
                 }
             }
+        }
+
+        function _processEventUpdate (message) {
+            __toggleEU();
+            $('#EventTotalParticipants').text((message.attacker_count + message.harvester_count + message.crafter_count + message.carver_count).format());
+            $('#EventBattlingParticipants').text(message.attacker_count.format());
+            $('#EventHarvestingParticipants').text(message.harvester_count.format());
+            $('#EventCraftingParticipants').text(message.crafter_count.format());
+            $('#EventCarvingParticipants').text(message.carver_count.format());
+        }
+
+        function _processEventAction (message) {
+            __updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true));
         }
 
         function _updateMSGLimit (msgBox) {
@@ -876,6 +921,163 @@
             o.observe(document.querySelector('td#agility'), {attributes: true, attributeOldValue: true});
         }
 
+        function __eventUpdatesObserver () {
+            log('Starting gauntlet battler msg abbreviator');
+            let regexes = {
+                attack: /You .+ (Bow|Sword|Staff|fists).+([0-9]+ times? hitting [0-9]+ times?), dealing .+ damage.$/i,
+                // You cast 1 spell at [Vermin] Boss Forty-two, dealing 2,127,514,765 damage.
+                spellcast: /^You cast [0-9]+ spell.+dealing .+ damage.$/i,
+                summary: /([0-9,]+ adventurers? (have|has) ([^\s]+)(, dealing)? [0-9,]+)/g,
+                heal: /You healed [0-9,]+ HP!$/i,
+                counter: /You counter .+ ([0-9,]+ times?).+ dealing .* damage.$/i,
+                bosshit: /^\[.+\] Boss .+ dealing [0-9,]+ damage\.$/,
+                bossmiss: /^\[.+\] Boss .+ but misses!$/i,
+                res: /^You found ([0-9,]+) ([a-z]+)\.$/i,
+                craft: /^You smashed down .* Hammer ([0-9,]+) times\. .* (\+[0-9,.%]+ [a-z\s]+) to the item\.$/i,
+                craft_sub: /(\+[0-9,.%]+ [a-z\s]+)/ig,
+                carve: /^You carefully slice.*Saw ([0-9,]+) times?\..+ ([0-9,]+)\.$/i,
+            };
+            o = new MutationObserver(function (ml) {
+                for (let m of ml) {
+                    if (m.addedNodes.length) {
+                        let a = m.addedNodes[0].textContent;
+
+                        let parse;
+
+                        if ((parse = a.match(regexes.attack)) !== null) {
+                            let spans = m.addedNodes[0].querySelectorAll('span:not(.ally)');
+                            let iconMap = {
+                                'bow' : '\uD83C\uDFF9 ',
+                                'sword' : '\u2694 ',
+                                'staff' : '\u2728 ',
+                                'fists' : '\uD83D\uDC4A '
+                            };
+                            m.addedNodes[0].innerHTML = '';
+                            m.addedNodes[0].appendChild(document.createTextNode(iconMap[parse[1].toLowerCase()] + ' +'));
+                            let dmgSpan = spans[spans.length === 4 ? 3 : 2];
+                            dmgSpan.setAttribute('title', spans[spans.length === 4 ? 2 : 1].textContent);
+                            m.addedNodes[0].appendChild(dmgSpan); // dmg
+                            m.addedNodes[0].appendChild(document.createTextNode(' damage'));
+                            let attemptsAndHits = parse[2].replace('times hitting', 'attempts').replace('times', 'hits');
+                            m.addedNodes[0].appendChild(document.createTextNode(` (${attemptsAndHits}`));
+                            if (spans.length === 4) {
+                                m.addedNodes[0].appendChild(document.createTextNode(` / `));
+                                m.addedNodes[0].appendChild(spans[0]);
+                            }
+                            m.addedNodes[0].appendChild(document.createTextNode(`)`));
+                        } else if ((parse = a.match(regexes.spellcast)) !== null) {
+                            let spans = m.addedNodes[0].querySelectorAll('span:not(.ally)');
+
+                            m.addedNodes[0].innerHTML = '';
+                            // m.addedNodes[0].appendChild(document.createTextNode('\u2606\u5F61 +'));
+                            m.addedNodes[0].appendChild(document.createTextNode('\uD83C\uDF20 +'));
+                            let dmgSpan = spans[2];
+                            dmgSpan.setAttribute('title', spans[1].textContent);
+                            m.addedNodes[0].appendChild(dmgSpan); // dmg
+                            m.addedNodes[0].appendChild(document.createTextNode(' damage'));
+                            m.addedNodes[0].appendChild(document.createTextNode(` (${spans[0].textContent})`));
+                        } else if ((parse = a.match(regexes.summary)) !== null) {
+                            let spans = m.addedNodes[0].querySelectorAll('span');
+                            m.addedNodes[0].innerHTML = '';
+
+                            let xAdv;
+
+                            xAdv = spans[0];
+                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                            m.addedNodes[0].appendChild(xAdv);
+                            m.addedNodes[0].appendChild(spans[1]);
+                            m.addedNodes[0].appendChild(document.createTextNode(' resources, '));
+
+                            xAdv = spans[2];
+                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                            m.addedNodes[0].appendChild(xAdv);
+                            m.addedNodes[0].appendChild(spans[3]);
+                            m.addedNodes[0].appendChild(document.createTextNode(' damage, '));
+
+                            xAdv = spans[4];
+                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                            m.addedNodes[0].appendChild(xAdv);
+                            m.addedNodes[0].appendChild(spans[5]);
+                            m.addedNodes[0].appendChild(document.createTextNode(' bonuses and '));
+
+                            xAdv = spans[6];
+                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                            m.addedNodes[0].appendChild(xAdv);
+                            m.addedNodes[0].appendChild(spans[7]);
+                            m.addedNodes[0].appendChild(document.createTextNode(' resonance'));
+                        } else if ((parse = a.match(regexes.heal)) !== null) {
+                            let span = m.addedNodes[0].querySelector('span');
+                            m.addedNodes[0].innerHTML = '';
+
+                            m.addedNodes[0].appendChild(document.createTextNode('+'));
+                            m.addedNodes[0].appendChild(span);
+                        } else if ((parse = a.match(regexes.counter)) !== null) {
+                            let spans = m.addedNodes[0].querySelectorAll('span');
+                            m.addedNodes[0].innerHTML = '';
+
+                            m.addedNodes[0].appendChild(document.createTextNode('\u2194'));
+                            m.addedNodes[0].appendChild(spans[1]);
+                            m.addedNodes[0].appendChild(document.createTextNode(` (${parse[1]})`));
+                        } else if ((parse = a.match(regexes.bosshit)) !== null) {
+                            let span = m.addedNodes[0].querySelector('span:last-child');
+                            m.addedNodes[0].innerHTML = '';
+
+                            m.addedNodes[0].appendChild(document.createTextNode('\uD83C\uDFAF'));
+                            m.addedNodes[0].appendChild(span);
+                        } else if ((parse = a.match(regexes.bossmiss)) !== null) {
+                            let boss = m.addedNodes[0].querySelector('span:first-child');
+                            m.addedNodes[0].innerHTML = '';
+                            let span = document.createElement('span');
+                            span.setAttribute('title', boss.textContent);
+                            span.textContent = '\uD83D\uDF9C boss missed';
+                            m.addedNodes[0].appendChild(span);
+                        } else if ((parse = a.match(regexes.res)) !== null) {
+                            let iconMap = {
+                                'food' : '\uD83C\uDFA3 ',
+                                'wood' : '\uD83C\uDF32 ',
+                                'iron' : '\u26CF ',
+                                'stone' : '\uD83D\uDC8E '
+                            };
+                            m.addedNodes[0].innerHTML = '';
+                            m.addedNodes[0].appendChild(document.createTextNode(`${iconMap[parse[2]]} `));
+
+                            let span = document.createElement('span');
+                            span.classList.add(parse[2]);
+                            span.textContent = `+${parse[1]} ${parse[2]}`;
+                            m.addedNodes[0].appendChild(span);
+                        } else if ((parse = a.match(regexes.craft)) !== null) {
+                            let parse2 =  a.match(regexes.craft_sub);
+                            parse2 = parse2.map(item => item.replace(' to the item', ''));
+                            m.addedNodes[0].innerHTML = '';
+                            m.addedNodes[0].appendChild(document.createTextNode(`\uD83D\uDD28 `));
+
+                            let span = document.createElement('span');
+                            span.classList.add('crafting');
+                            span.textContent = `+${parse[1]} bonuses`;
+                            span.setAttribute('title', `${parse2.join('\n')}`);
+                            m.addedNodes[0].appendChild(span);
+                        } else if ((parse = a.match(regexes.carve)) !== null) {
+                            let parse2 =  a.match(regexes.craft_sub);
+                            m.addedNodes[0].innerHTML = '';
+                            m.addedNodes[0].appendChild(document.createTextNode(`\uD83D\uDC8E `));
+
+                            let span = document.createElement('span');
+                            span.classList.add('carving');
+                            span.textContent = `+${parse[2]} resonance`;
+                            m.addedNodes[0].appendChild(span);
+                        } else {
+                            console.log(m.addedNodes[0].outerHTML);
+                            console.log(m.addedNodes[0].textContent);
+                            for (let rx in regexes) {
+                                console.log(a.match(regexes[rx]));
+                            }
+                        }
+                    }
+                }
+            });
+            o.observe(document.querySelector('#gauntletText'), {childList: true});
+        }
+
         function __saveTracker () {
             localStorage.setItem(trackerSaveKey, JSON.stringify(tracker));
         }
@@ -941,6 +1143,7 @@
             __healthObserver();
             __coordinationObserver();
             __agilityObserver();
+            __eventUpdatesObserver();
         }
 
         function __registerFameOwnGemTableObserver () {
@@ -1185,6 +1388,8 @@
             processBattle: _processBattle,
             processTS: _processTS,
             processCraft: _processCraft,
+            processEventUpdate: _processEventUpdate,
+            processEventAction: _processEventAction,
             processLoginInfo: _processLI,
             processHouse: _handleHouseData,
             updateMessageLimit: _updateMSGLimit,
@@ -1207,6 +1412,18 @@
 
     $(document).on('roa-ws:craft', function (e, data) {
         QoL.processCraft(data);
+    });
+    //
+    // $(document).on('roa-ws:carve', function (e, data) {
+    //     QoL.processCarve(data);
+    // });
+
+    $(document).on('roa-ws:event_update', function (e, data) {
+        QoL.processEventUpdate(data);
+    });
+
+    $(document).on('roa-ws:event_action', function (e, data) {
+        QoL.processEventAction(data);
     });
 
     $(document).on('roa-ws:login_info', function (e, data) {
