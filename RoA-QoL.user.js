@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.6-beta-4
+// @version      1.0.6-beta-5
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
@@ -10,6 +10,7 @@
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js
+// @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
@@ -51,6 +52,7 @@
         let FI;
 
         const INTERNAL_UPDATE_URI = 'https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js';
+        const WORKER_DIRECTORY = 'https://api.github.com/repos/edvordo/roa-qol/contents/workers/';
 
         let username;
 
@@ -224,6 +226,9 @@
             CrftXPReq: 0,
             CarvXPReq: 0,
         };
+
+        let trackerSaveWorker;
+
         // curtesy of http://stackoverflow.com/a/18234317
         String.prototype.formatQoL = String.prototype.formatQoL || function () {
             let str = this.toString();
@@ -287,8 +292,8 @@
 
             let result = [];
             if (hours > 0) result.push(`${hours}h`);
-            if (minutes > 0) result.push(`${minutes}m`);
-            result.push(`${seconds}s`);
+            if (minutes > 0) result.push(`${minutes < 10 ? '0' : ''}${minutes}m`);
+            result.push(`${seconds < 10 ? '0' : ''}${seconds}s`);
 
             return result.map(item => {
                 if (colonDelimited === true) {
@@ -338,6 +343,41 @@
                     } else {
                         checkForUpdateTimer = setTimeout(__checkForUpdate, 24 * 60 * 60 * 1000);
                     }
+                });
+        }
+
+        function __getWorker (worker, branch = 'master') {
+            return `${WORKER_DIRECTORY}${worker}Worker.js?ref=${branch}`;
+        }
+
+        function __setupWorkers () {
+            // because __loadTracker() depends on this loaded ..
+            // an' 'cus I like it
+            fetch(__getWorker('trackerSave', 'dev'))
+                .then(res => res.json())
+                .then(data => {
+                    trackerSaveWorker = new Worker('data:application/javascript;base64,' + data.content);
+                    trackerSaveWorker.onmessage = e => {
+                        let d = e.data;
+
+                        if (typeof d !== 'object') {
+                            return false;
+                        }
+
+                        switch (d.a) {
+                            case 'ts': // tracker save
+                                localStorage.setItem(`${trackerSaveKey}-${d.s}`, d.d);
+                                break;
+
+                            case 'tls': // tracker load section
+                                tracker[d.s] = d.d;
+                                break;
+
+                            default:
+                                break;
+                        }
+                    };
+                    __loadTracker();
                 });
         }
 
@@ -417,9 +457,11 @@
             QoLStats.d.TSXPPerHour = 0;
             QoLStats.d.CTXPPerHour = 0;
 
+            __setupWorkers();
             __loadHouseInfo();
-            __loadTracker();
+            setInterval(__saveTracker, 6E4); // once a minute ..
             setTimeout(__checkForUpdate, 5E3);
+            setTimeout(__saveTracker, 3E4);
 
             FI = new Favico({animation: 'none'});
             FI.badge(0);
@@ -431,6 +473,20 @@
             GM_addStyle(GM_getResourceText('DygraphCSS'));
             GM_addStyle(GM_getResourceText('ChartistCSS'));
             GM_addStyle(GM_getResourceText('ChartistTTipCSS'));
+
+            __platObserver();
+            __goldObserver();
+            __matsObserver();
+            __fragsObserver();
+            __foodObserver();
+            __woodObserver();
+            __ironObserver();
+            __stoneObserver();
+            __strengthObserver();
+            __healthObserver();
+            __coordinationObserver();
+            __agilityObserver();
+            __eventUpdatesObserver();
         }
 
         function __saveHouseInfo () {
@@ -512,10 +568,13 @@
             $('.rq-h.rq-event-update').removeClass('hidden');
         }
 
-        function __updateFavico (to, text = null) {
-            let color = to > 0 ? '#050' : '#a00';
+        function __updateFavico (to, text = null, bg = null) {
+            let _bg = bg;
+            if (bg === null) {
+                _bg = parseInt(to) > 0 ? '#050' : '#a00';
+            }
             let _text = text === null ? Math.abs(to) : text;
-            FI.badge(_text, {bgColor: color});
+            FI.badge(_text, {bgColor: _bg});
         }
 
         function __updateStats (type, data) {
@@ -584,7 +643,6 @@
             }
             tracker.avgDmStrStat[dmgType][battle.p.strength.base].dmg += battle.b.p.dm;
             tracker.avgDmStrStat[dmgType][battle.p.strength.base].a++;
-            __saveTracker();
         }
 
         function __battle (data) {
@@ -709,7 +767,7 @@
         }
 
         function _processEventAction (message) {
-            __updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true));
+            __updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true).replace(':', ''), '#ff1493');
         }
 
         function _updateMSGLimit (msgBox) {
@@ -726,7 +784,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.platinum[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -743,7 +800,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.gold[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -760,7 +816,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.mats[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -769,7 +824,7 @@
         }
 
         function __fragsObserver () {
-            log('Starting fragsobserver');
+            log('Starting frags observer');
             let o = new MutationObserver(function (ml) {
                 for (let m of ml) {
                     if (m.type === 'attributes' && m.attributeName === 'title') {
@@ -777,7 +832,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.frags[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -794,7 +848,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.food[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -811,7 +864,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.wood[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -828,7 +880,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.iron[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -845,7 +896,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.stone[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -862,7 +912,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.strength[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -879,7 +928,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.health[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -896,7 +944,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.coordination[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -913,7 +960,6 @@
                         let nowValue = m.target.getAttribute(m.attributeName);
                         if (oldValue && nowValue && oldValue !== nowValue) {
                             tracker.agility[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                            __saveTracker();
                         }
                     }
                 }
@@ -950,7 +996,7 @@
                                 'bow' : '\uD83C\uDFF9 ',
                                 'sword' : '\u2694 ',
                                 'staff' : '\u2728 ',
-                                'fists' : '\uD83D\uDC4A '
+                                'fists' : '\uD83D\uDC4A ',
                             };
                             m.addedNodes[0].innerHTML = '';
                             m.addedNodes[0].appendChild(document.createTextNode(iconMap[parse[1].toLowerCase()] + ' +'));
@@ -1036,7 +1082,7 @@
                                 'food' : '\uD83C\uDFA3 ',
                                 'wood' : '\uD83C\uDF32 ',
                                 'iron' : '\u26CF ',
-                                'stone' : '\uD83D\uDC8E '
+                                'stone' : '\uD83D\uDC8E ',
                             };
                             m.addedNodes[0].innerHTML = '';
                             m.addedNodes[0].appendChild(document.createTextNode(`${iconMap[parse[2]]} `));
@@ -1068,9 +1114,6 @@
                         } else {
                             console.log(m.addedNodes[0].outerHTML);
                             console.log(m.addedNodes[0].textContent);
-                            for (let rx in regexes) {
-                                console.log(a.match(regexes[rx]));
-                            }
                         }
                     }
                 }
@@ -1079,71 +1122,72 @@
         }
 
         function __saveTracker () {
-            localStorage.setItem(trackerSaveKey, JSON.stringify(tracker));
+            log('Saving tracker');
+            trackerSaveWorker.postMessage({a:'trackerSave', t:tracker});
         }
 
         function __loadTracker () {
             log('Loading tracker');
-            let _tracker = localStorage.getItem(trackerSaveKey);
-            if (_tracker) {
+            let _tracker = {};
+            let _tracker1 = localStorage.getItem(trackerSaveKey);
+            let _tracker2 = localStorage.getItem(`${trackerSaveKey}-platinum`);
+            if (_tracker2) {
+                for (let section in tracker) {
+                    let sectionData = localStorage.getItem(`${trackerSaveKey}-${section}`);
+                    if (sectionData) {
+                        trackerSaveWorker.postMessage({a:'trackerLoadSection',s:section,d:sectionData});
+                    }
+                }
+                // if (_tracker1) { // not yet, just in case
+                //     localStorage.removeItem(trackerSaveKey);
+                // }
+            } else if (_tracker1) {
                 try {
-                    _tracker = JSON.parse(_tracker);
+                    _tracker = JSON.parse(_tracker1);
                 } catch (e) {
                     log(`Failure while loading tracker info "${e.message}"`);
                     _tracker = tracker;
                 }
                 tracker = _tracker;
+                // changes for 1.0.6
                 if (!tracker.hasOwnProperty('gold')) {
-                    tracker['gold'] = {};
+                    tracker.gold = {};
                 }
                 if (!tracker.hasOwnProperty('mats')) {
-                    tracker['mats'] = {};
+                    tracker.mats = {};
                 }
                 if (!tracker.hasOwnProperty('frags')) {
-                    tracker['frags'] = {};
+                    tracker.frags = {};
                 }
                 if (!tracker.hasOwnProperty('food')) {
-                    tracker['food'] = {};
+                    tracker.food = {};
                 }
                 if (!tracker.hasOwnProperty('wood')) {
-                    tracker['wood'] = {};
+                    tracker.wood = {};
                 }
                 if (!tracker.hasOwnProperty('iron')) {
-                    tracker['iron'] = {};
+                    tracker.iron = {};
                 }
                 if (!tracker.hasOwnProperty('stone')) {
-                    tracker['stone'] = {};
+                    tracker.stone = {};
                 }
                 if (!tracker.hasOwnProperty('strength')) {
-                    tracker['strength'] = {};
+                    tracker.strength = {};
                 }
                 if (!tracker.hasOwnProperty('health')) {
-                    tracker['health'] = {};
+                    tracker.health = {};
                 }
                 if (!tracker.hasOwnProperty('coordination')) {
-                    tracker['coordination'] = {};
+                    tracker.coordination = {};
                 }
                 if (!tracker.hasOwnProperty('agility')) {
-                    tracker['agility'] = {};
+                    tracker.agility = {};
                 }
                 if (!tracker.hasOwnProperty('avgDmStrStat')) {
-                    tracker['avgDmStrStat'] = {};
+                    tracker.avgDmStrStat = {};
                 }
                 __saveTracker();
             }
-            __platObserver();
-            __goldObserver();
-            __matsObserver();
-            __fragsObserver();
-            __foodObserver();
-            __woodObserver();
-            __ironObserver();
-            __stoneObserver();
-            __strengthObserver();
-            __healthObserver();
-            __coordinationObserver();
-            __agilityObserver();
-            __eventUpdatesObserver();
         }
 
         function __registerFameOwnGemTableObserver () {
@@ -1306,7 +1350,6 @@
                         resValue,
                     ]);
                 }
-                __saveTracker();
                 __showChart('#RQ-hub-chart-' + res, res, resData);
                 __showTrackerStats(res);
             }
@@ -1365,7 +1408,6 @@
                 let dt = $('#RQ-hub-stats-avg-dmg-data').DataTable();
                 dt.clear();
                 for (let item of tableData) {
-                    console.log(item);
                     dt.row.add(item);
                 }
                 dt.draw();
