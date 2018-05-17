@@ -1,0 +1,69 @@
+.houseLabel {
+    display: block;
+    text-decoration: none !important;
+}
+
+div#chatMessageWrapper:before {
+    content: attr(data-limiter);
+    font-size: 10px;
+    position: absolute;
+    top: -8px;
+    z-index: 1;
+    background: var(--btn-background-color);
+    border: 1px solid var(--border-color);
+    right: 110px;
+}
+
+.ct-label {
+    color: #d2d2d2;
+}
+
+.ct-series-a .ct-line {
+    stroke-width: 2px;
+    stroke: var(--action-color);
+}
+
+.ct-series-a .ct-point {
+    stroke: var(--action-color);
+    stroke-width: 4px;
+    stroke-linecap: square;
+}
+
+table#QoLStats tbody tr td:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+ul#RQ-hub-charts-tabs a {
+    text-decoration: none;
+}
+
+ul#RQ-hub-charts-tabs li.active a, ul#RQ-hub-charts-tabs li a:hover {
+    background: var(--btn-background-color);
+    color: #fff;
+}
+
+div#RQ-hub-wrapper div.tab-pane.active {
+    color: #fff;
+}
+
+.dygraph-legend {
+    background: var(--btn-background-color);
+}
+
+.dygraph-legend > span {
+    display: block;
+}
+
+.dygraph-axis-label {
+    color: #fff;
+}
+
+div#RQ-hub-wrapper table.rq-styled thead th {
+    background-image: linear-gradient(to bottom, var(--header-gradient-first-color) 0, var(--header-gradient-second-color) 100%);
+}
+
+div#RQ-hub-wrapper table.rq-styled,
+div#RQ-hub-wrapper table.rq-styled * {
+    border-color: var(--border-color);
+}
