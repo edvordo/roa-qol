@@ -58,8 +58,8 @@ onmessage = event => {
             if (stats.d.hasOwnProperty(stamp)) {
                 dataTable.push([
                     stamp,
-                    stats.d[stamp].t,
-                    stats.d[stamp].t / 24,
+                    stats.d[stamp].t.format(),
+                    '~' + (stats.d[stamp].t / 24).format() + ' / h',
                 ]);
             }
         }
@@ -136,11 +136,11 @@ onmessage = event => {
                 ]);
                 tableData.push([
                     moment.tz(values.s, GTZ).format(captionFormat),
-                    parseInt(baseStr),
-                    values.total,
-                    values.dmg,
-                    values.a,
-                    values.dmg / values.a,
+                    parseInt(baseStr).format(),
+                    values.total.format(),
+                    values.dmg.format(),
+                    values.a.format(),
+                    (values.dmg / values.a).format(),
                 ]);
             }
             postMessage({a: 'statADGraphData',sn:d.cs,cd:chartData});
