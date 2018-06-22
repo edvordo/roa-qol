@@ -1,82 +1,556 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      1.0.6-beta-5
+// @version      2.0.0-rc1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     DygraphCSS        https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css
+// @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/dev/workers/trackerSaveWorker.js
+// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/dev/workers/trackerProcessorWorker.js
+// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/dev/resources/templates/header.html
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
+// @require      https://rawgit.com/edvordo/roa-qol/dev/common.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
-
 (function (window, $) {
 
-    function log (message) {
-        console.log(`[${moment().format('MMM Do Y HH:mm:ss')}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
+    if (typeof MutationObserver.prototype.restart !== 'function') {
+        MutationObserver.prototype.observeArguments = []; // internal variable to store the args
+        MutationObserver.prototype.originalObserve = MutationObserver.prototype.observe; // save the original implementation
+        MutationObserver.prototype.observe = function (target, options) { // overwrite the function
+            this.observeArguments = [target, options];
+            return this.originalObserve.apply(this, this.observeArguments);
+        };
+        MutationObserver.prototype.restart = function () { // and finally add the restart function
+            return this.originalObserve.apply(this, this.observeArguments);
+        };
     }
 
     let QoL = (function QoL () {
-        let house = {
-            rooms: {},
-            roomNameMap: {},
-        };
 
-        let trackerSaveKey = 'QoLTracker';
-        let tracker = {
-            platinum: {},
-            gold: {},
-            mats: {},
-            frags: {},
-            food: {},
-            wood: {},
-            iron: {},
-            stone: {},
-            strength: {},
-            health: {},
-            coordination: {},
-            agility: {},
-            avgDmStrStat: {},
-        };
-
-        let gameTimeZone = 'America/New_York';
-
-        let FI;
+        const GAME_TIME_ZONE = 'America/New_York';
 
         const INTERNAL_UPDATE_URI = 'https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js';
-        const WORKER_DIRECTORY = 'https://api.github.com/repos/edvordo/roa-qol/contents/workers/';
 
-        let username;
+        const TRACKER_SAVE_KEY = 'QoLTracker';
 
-        let gems = {};
+        const WORKERS = {};
 
-        // let platObserver, goldObserver, matsObserver, fragsObeserver;
+        const VARIABLES = {
+            username: '',
+            FI: null,
+            chatDirection: 'up',
+            checkForUpdateTimer: 6 * 60 * 60 * 1000, // 6 hours
+            gems: {},
 
-        let chatDirection = 'up';
+            QoLStats: {
+                e: {}, // elements
+                d: {}, // data
+                bs: moment.tz(GAME_TIME_ZONE),
+                hs: moment.tz(GAME_TIME_ZONE),
+                cts: moment.tz(GAME_TIME_ZONE),
+                cas: moment.tz(GAME_TIME_ZONE),
+                b: 0, // battles
+                h: 0, // harvests
+                ct: 0, // crafts
+                ca: 0, // varves
+                na: 0, // next action
+                PlXPReq: 0,
+                FoodXPReq: 0,
+                WoodXPReq: 0,
+                IronXPReq: 0,
+                StoneXPReq: 0,
+                CrftXPReq: 0,
+                CarvXPReq: 0,
+            },
 
-        let chartsContentTmpl = '';
-        let chartsTabsTmpl = '';
+            tracker: {
+                platinum: {},
+                gold: {},
+                mats: {},
+                frags: {},
+                food: {},
+                wood: {},
+                iron: {},
+                stone: {},
+                strength: {},
+                health: {},
+                coordination: {},
+                agility: {},
+                avgDmStrStat: {},
+            },
+            tracked: {
+                stuff: ['Platinum', 'Gold', 'Mats', 'Frags', 'Food', 'Wood', 'Iron', 'Stone'],
+                stuffDD: ['Strength', 'Health', 'Coordination', 'Agility'],
+                stuffLC: [],
+                stuffDDLC: [],
+                map: {},
+            },
+            house: {
+                rooms: {},
+                roomNameMap: {},
+            },
+            hub: {
+                tab: '',
+                subtab: 'platinum',
+            },
+            twoWeeksago: moment.tz(GAME_TIME_ZONE).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00'),
+        };
 
-        let trackedStuff = ['Platinum', 'Gold', 'Mats', 'Frags', 'Food', 'Wood', 'Iron', 'Stone'];
-        let trackedStuffDD = ['Strength', 'Health', 'Coordination', 'Agility'];
-        let trackedStuffLC = trackedStuff.map(i => i.toLowerCase());
-        let trackedStuffDDLC = trackedStuffDD.map(i => i.toLowerCase());
+        const TEMPLATES = {
+            headerHTML: GM_getResourceText('QoLHeaderHTML'),
+            hubHTML: '',
+        };
 
-        for (let resName of trackedStuff.concat(trackedStuffDD)) {
-            if (trackedStuffDD.indexOf(resName) === -1) {
-                chartsTabsTmpl += `<li class="${resName === 'Platinum' ? 'active' : ''}">
+        const OBSERVERS = {
+            toggleable: {
+                eventAppreviator () {
+                    let regexes = {
+                        attack: /You .+ (Bow|Sword|Staff|fists).+([0-9]+ times? hitting [0-9]+ times?), dealing .+ damage.$/i,
+                        // You cast 1 spell at [Vermin] Boss Forty-two, dealing 2,127,514,765 damage.
+                        spellcast: /^You cast [0-9]+ spell.+dealing .+ damage.$/i,
+                        summary: /([0-9,]+ adventurers? (have|has) ([^\s]+)(, dealing)? [0-9,]+)/g,
+                        heal: /You healed [0-9,]+ HP!$/i,
+                        counter: /You counter .+ ([0-9,]+ times?).+ dealing .* damage.$/i,
+                        bosshit: /^\[.+\] Boss .+ dealing [0-9,]+ damage\.$/,
+                        bossmiss: /^\[.+\] Boss .+ but misses!$/i,
+                        res: /^You found ([0-9,]+) ([a-z]+)\.$/i,
+                        craft: /^You smashed down .* Hammer ([0-9,]+) times\. .* (\+[0-9,.%]+ [a-z\s]+) to the item\.$/i,
+                        craft_sub: /(\+[0-9,.%]+ [a-z\s]+)/ig,
+                        carve: /^You carefully slice.*Saw ([0-9,]+) times?\..+ ([0-9,]+)\.$/i,
+                    };
+                    let o = new MutationObserver(function (ml) {
+                        for (let m of ml) {
+                            if (m.addedNodes.length) {
+                                let a = m.addedNodes[0].textContent;
+
+                                let parse;
+
+                                if ((parse = a.match(regexes.attack)) !== null) {
+                                    let spans = m.addedNodes[0].querySelectorAll('span:not(.ally)');
+                                    let iconMap = {
+                                        'bow': '\uD83C\uDFF9 ',
+                                        'sword': '\u2694 ',
+                                        'staff': '\u2728 ',
+                                        'fists': '\uD83D\uDC4A ',
+                                    };
+                                    m.addedNodes[0].innerHTML = '';
+                                    m.addedNodes[0].appendChild(document.createTextNode(iconMap[parse[1].toLowerCase()] + ' +'));
+                                    let dmgSpan = spans[spans.length === 4 ? 3 : 2];
+                                    dmgSpan.setAttribute('title', spans[spans.length === 4 ? 2 : 1].textContent);
+                                    m.addedNodes[0].appendChild(dmgSpan); // dmg
+                                    m.addedNodes[0].appendChild(document.createTextNode(' damage'));
+                                    let attemptsAndHits = parse[2].replace('times hitting', 'attempts').replace('times', 'hits');
+                                    m.addedNodes[0].appendChild(document.createTextNode(` (${attemptsAndHits}`));
+                                    if (spans.length === 4) {
+                                        m.addedNodes[0].appendChild(document.createTextNode(` / `));
+                                        m.addedNodes[0].appendChild(spans[0]);
+                                    }
+                                    m.addedNodes[0].appendChild(document.createTextNode(`)`));
+                                } else if ((parse = a.match(regexes.spellcast)) !== null) {
+                                    let spans = m.addedNodes[0].querySelectorAll('span:not(.ally)');
+
+                                    m.addedNodes[0].innerHTML = '';
+                                    // m.addedNodes[0].appendChild(document.createTextNode('\u2606\u5F61 +'));
+                                    m.addedNodes[0].appendChild(document.createTextNode('\uD83C\uDF20 +'));
+                                    let dmgSpan = spans[2];
+                                    dmgSpan.setAttribute('title', spans[1].textContent);
+                                    m.addedNodes[0].appendChild(dmgSpan); // dmg
+                                    m.addedNodes[0].appendChild(document.createTextNode(' damage'));
+                                    m.addedNodes[0].appendChild(document.createTextNode(` (${spans[0].textContent})`));
+                                } else if ((parse = a.match(regexes.summary)) !== null) {
+                                    let spans = m.addedNodes[0].querySelectorAll('span');
+                                    m.addedNodes[0].innerHTML = '';
+
+                                    let xAdv;
+
+                                    xAdv = spans[0];
+                                    xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                                    m.addedNodes[0].appendChild(xAdv);
+                                    m.addedNodes[0].appendChild(spans[1]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(' resources, '));
+
+                                    xAdv = spans[2];
+                                    xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                                    m.addedNodes[0].appendChild(xAdv);
+                                    m.addedNodes[0].appendChild(spans[3]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(' damage, '));
+
+                                    xAdv = spans[4];
+                                    xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                                    m.addedNodes[0].appendChild(xAdv);
+                                    m.addedNodes[0].appendChild(spans[5]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(' bonuses and '));
+
+                                    xAdv = spans[6];
+                                    xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
+                                    m.addedNodes[0].appendChild(xAdv);
+                                    m.addedNodes[0].appendChild(spans[7]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(' resonance'));
+                                } else if ((parse = a.match(regexes.heal)) !== null) {
+                                    let span = m.addedNodes[0].querySelector('span');
+                                    m.addedNodes[0].innerHTML = '';
+
+                                    m.addedNodes[0].appendChild(document.createTextNode('+'));
+                                    m.addedNodes[0].appendChild(span);
+                                } else if ((parse = a.match(regexes.counter)) !== null) {
+                                    let spans = m.addedNodes[0].querySelectorAll('span');
+                                    m.addedNodes[0].innerHTML = '';
+
+                                    m.addedNodes[0].appendChild(document.createTextNode('\u2194'));
+                                    m.addedNodes[0].appendChild(spans[1]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(` (${parse[1]})`));
+                                } else if ((parse = a.match(regexes.bosshit)) !== null) {
+                                    let span = m.addedNodes[0].querySelector('span:last-child');
+                                    m.addedNodes[0].innerHTML = '';
+
+                                    m.addedNodes[0].appendChild(document.createTextNode('\uD83C\uDFAF'));
+                                    m.addedNodes[0].appendChild(span);
+                                } else if ((parse = a.match(regexes.bossmiss)) !== null) {
+                                    let boss = m.addedNodes[0].querySelector('span:first-child');
+                                    m.addedNodes[0].innerHTML = '';
+                                    let span = document.createElement('span');
+                                    span.setAttribute('title', boss.textContent);
+                                    span.textContent = '\uD83D\uDF9C boss missed';
+                                    m.addedNodes[0].appendChild(span);
+                                } else if ((parse = a.match(regexes.res)) !== null) {
+                                    let iconMap = {
+                                        'food': '\uD83C\uDFA3 ',
+                                        'wood': '\uD83C\uDF32 ',
+                                        'iron': '\u26CF ',
+                                        'stone': '\uD83D\uDC8E ',
+                                    };
+                                    m.addedNodes[0].innerHTML = '';
+                                    m.addedNodes[0].appendChild(document.createTextNode(`${iconMap[parse[2]]} `));
+
+                                    let span = document.createElement('span');
+                                    span.classList.add(parse[2]);
+                                    span.textContent = `+${parse[1]} ${parse[2]}`;
+                                    m.addedNodes[0].appendChild(span);
+                                } else if ((parse = a.match(regexes.craft)) !== null) {
+                                    let parse2 = a.match(regexes.craft_sub);
+                                    parse2 = parse2.map(item => item.replace(' to the item', ''));
+                                    m.addedNodes[0].innerHTML = '';
+                                    m.addedNodes[0].appendChild(document.createTextNode(`\uD83D\uDD28 `));
+
+                                    let span = document.createElement('span');
+                                    span.classList.add('crafting');
+                                    span.textContent = `+${parse[1]} bonuses`;
+                                    span.setAttribute('title', `${parse2.join('\n')}`);
+                                    m.addedNodes[0].appendChild(span);
+                                } else if ((parse = a.match(regexes.carve)) !== null) {
+                                    let parse2 = a.match(regexes.craft_sub);
+                                    m.addedNodes[0].innerHTML = '';
+                                    m.addedNodes[0].appendChild(document.createTextNode(`\uD83D\uDC8E `));
+
+                                    let span = document.createElement('span');
+                                    span.classList.add('carving');
+                                    span.textContent = `+${parse[2]} resonance`;
+                                    m.addedNodes[0].appendChild(span);
+                                } else {
+                                    console.log(m.addedNodes[0].outerHTML);
+                                    console.log(m.addedNodes[0].textContent);
+                                }
+                            }
+                        }
+                    });
+                    o.observe(document.querySelector('#gauntletText'), {childList: true});
+                    // o.disconnect();
+                    return o;
+                },
+            },
+            general: {
+                fameOwnGemsObserver: new MutationObserver(
+                    function (ml) {
+                        for (let m of ml) {
+                            if (m.type !== 'childList' || m.addedNodes.length === 0) {
+                                continue;
+                            }
+                            let rowLastTd = m.addedNodes[0].querySelector('td:last-child');
+                            if (rowLastTd === null || rowLastTd.getAttributeNames().indexOf('data-gemid') === -1) {
+                                continue;
+                            }
+                            let gemId = rowLastTd.getAttribute('data-gemid');
+                            if (!VARIABLES.gems.hasOwnProperty(gemId)) {
+                                continue;
+                            }
+                            let gem = VARIABLES.gems[gemId];
+                            if (gem.o === username) {
+                                continue;
+                            }
+
+                            let a = document.createElement('a');
+                            a.textContent = '[Fame Own]';
+                            a.setAttribute('data-gemid', gem.i);
+                            a.setAttribute('class', 'RoAQoL-fameown-gem');
+                            rowLastTd.appendChild(document.createTextNode(' '));
+                            rowLastTd.appendChild(a);
+                        }
+                    },
+                ),
+            },
+        };
+
+        const fn = {
+            helpers: {
+                scrollToBottom (selector) {
+                    $(selector).animate({
+                        scrollTop: $(selector).prop('scrollHeight'),
+                    });
+                },
+                initObserver (name, attrName, selector) {
+                    let o = new MutationObserver(function (ml) {
+                        for (let m of ml) {
+                            if (m.type === 'attributes' && m.attributeName === attrName) {
+                                let oldValue = m.oldValue;
+                                let nowValue = m.target.getAttribute(m.attributeName);
+                                if (oldValue && nowValue && oldValue !== nowValue) {
+                                    VARIABLES.tracker[name][(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                                }
+                            }
+                        }
+                    });
+                    o.observe(document.querySelector(selector), {attributes: true, attributeOldValue: true});
+                    // o.disconnect();
+                    return o;
+                },
+                togglePerHourSection (section) {
+                    $('.rq-h').addClass('hidden');
+                    $(`.rq-h.rq-${section}`).removeClass('hidden');
+                },
+                updateFavico (to, text = null, bg = null) {
+                    let _bg = bg;
+                    if (bg === null) {
+                        _bg = parseInt(to) > 0 ? '#050' : '#a00';
+                    }
+                    let _text = text === null ? Math.abs(to) : text;
+                    VARIABLES.FI.badge(_text, {bgColor: _bg});
+                },
+                hubToggleTo (div = null) {
+                    $('#RQ-hub-sections > div').hide();
+                    if (div !== null) {
+                        $(div).fadeIn();
+                    }
+                },
+                updateStats (type, data) {
+                    let now = moment.tz(GAME_TIME_ZONE);
+                    let hour = 60 * 60 * 1000;
+                    let tmpl = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h';
+                    let map = {};
+                    let count = 0;
+                    let trackingStart = new Date();
+                    if (type === 'battle') {
+                        map = {
+                            XPPerHour: {d: 'BattleXPPerHour', l: 'XP', c: data.xp},
+                            BattleGoldPerHour: {d: '', l: 'Gold', c: data.g},
+                            BattleClanXPPerHour: {d: '', l: 'XP', c: data.cxp},
+                            BattleClanGoldPerHour: {d: '', l: 'Gold', c: data.cg},
+                        };
+                        count = VARIABLES.QoLStats.b;
+                        trackingStart = VARIABLES.QoLStats.bs;
+                    } else if (type === 'TS') {
+                        map = {
+                            XPPerHour: {d: 'TSXPPerHour', l: 'XP', c: data.xp},
+                            TSResourcesPerHour: {d: '', l: 'Resources', c: data.a},
+                            TSClanResourcesPerHour: {d: '', l: 'Resources', c: data.ca},
+                        };
+                        count = VARIABLES.QoLStats.h;
+                        trackingStart = VARIABLES.QoLStats.hs;
+                    } else if (type === 'Crafting') {
+                        map = {
+                            XPPerHour: {d: 'CTXPPerHour', l: 'XP', c: data.xp},
+                        };
+                        count = VARIABLES.QoLStats.ct;
+                        trackingStart = VARIABLES.QoLStats.cts;
+                    } else if (type === 'Carving') {
+                        map = {
+                            XPPerHour: {d: 'CAXPPerHour', l: 'XP', c: data.xp},
+                        };
+                        count = VARIABLES.QoLStats.ca;
+                        trackingStart = VARIABLES.QoLStats.cas;
+                    }
+
+                    for (let e in map) {
+                        let ed = map[e].d !== '' ? map[e].d : e;
+
+                        //"<h5>Based upon</h5>" + commatize(Math.floor(startXP))+" XP over "+battles+" battles since "+startTime.toLocaleString()+"<h5>Would be gain / h</h5>"+commatize(Math.floor((60*60*1000/jsonres.p.next_action)*xp))+" / h"
+                        let obj = {
+                            total: VARIABLES.QoLStats.d[ed].format(),
+                            label: map[e].l,
+                            count: count.format(),
+                            since: trackingStart.format('Do MMM Y HH:mm:ss'),
+                            type: `${type} actions`,
+                            wannabe: (Math.floor(hour / VARIABLES.QoLStats.na * map[e].c)).format(),
+                        };
+
+                        VARIABLES.QoLStats.e[e]
+                            .text((VARIABLES.QoLStats.d[ed] / (now - trackingStart) * hour).format())
+                            .attr({'data-original-title': tmpl.formatQoL(obj)});
+
+                    }
+                },
+            },
+            /** private / internal / helper methods */
+            __: {
+                checkForUpdate () {
+                    let version = '';
+                    fetch(INTERNAL_UPDATE_URI)
+                        .then(response => response.json())
+                        .then(data => {
+                            let match = atob(data.content).match(/\/\/\s+@version\s+([^\n]+)/);
+                            version = match[1];
+
+                            if (compareVersions(GM_info.script.version, version) < 0) {
+                                let message = `<li>[${moment.tz(GAME_TIME_ZONE).format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
+                                if (VARIABLES.chatDirection === 'up') {
+                                    $('#chatMessageList').prepend(message);
+                                } else {
+                                    $('#chatMessageList').append(message);
+                                    fn.helpers.scrollToBottom('#chatMessageListWrapper');
+                                }
+                            } else {
+                                setInterval(fn.__.checkForUpdate, VARIABLES.checkForUpdateTimer);
+                            }
+                        });
+                },
+
+                setupWorkers () {
+                    WORKERS.trackerSaveWorker = new Worker('data:application/javascript;base64,' + btoa(GM_getResourceText('QoLTrackerWorker')));
+                    WORKERS.trackerSaveWorker.onmessage = e => {
+                        let d = e.data;
+
+                        if (typeof d !== 'object') {
+                            return false;
+                        }
+                        switch (d.a) {
+                            case 'ts': // tracker save
+                                localStorage.setItem(`${TRACKER_SAVE_KEY}-${d.s}`, d.d);
+                                break;
+
+                            case 'tls': // tracker load section
+                                VARIABLES.tracker[d.s] = d.d;
+                                break;
+
+                            default:
+                                break;
+                        }
+                    };
+
+                    WORKERS.trackerProccessor = new Worker('data:application/javascript;base64,' + btoa(GM_getResourceText('QoLProcessorWorker')));
+                    WORKERS.trackerProccessor.onmessage = e => {
+                        let d = e.data;
+
+                        if (typeof d !== 'object') {
+                            return false;
+                        }
+
+                        switch (d.a) {
+                            case 'graphData':
+                                fn.__.showChart('#RQ-hub-chart-' + d.i, d.i, d.gd);
+                                break;
+
+                            case 'cleanData':
+                                VARIABLES.tracker[d.i] = d.d;
+                                break;
+
+                            case 'statsSummary':
+                                document.querySelector(`#RQ-hub-chart-${d.i}-subtitle`).textContent = d.d;
+                                break;
+
+                            case 'statsCaption':
+                                document.querySelector(`table#RQ-hub-stats-${d.i} > caption`).textContent = `~${d.d.format(3)} / day`;
+                                break;
+
+                            case 'dataTableDailyData':
+                                if (d.d.length) {
+                                    let dt = $(`#RQ-hub-stats-${d.i}`).DataTable();
+                                    dt.clear();
+                                    for (let item of d.d) {
+                                        // item[1] = item[1].format();
+                                        // item[2] = `~${item[2].format(3)} / h`;
+                                        dt.row.add(item);
+                                    }
+                                    dt.draw();
+                                }
+                                break;
+
+                            case 'statADGraphData':
+                                fn.__.showChart('#RQ-hub-chart-avg-dmg', 'Average Damage', d.cd);
+                                break;
+
+                            case 'statADTableData':
+                                if (d.td.length) {
+                                    let dt = $('#RQ-hub-stats-avg-dmg-data').DataTable();
+                                    dt.clear();
+                                    for (let item of d.td) {
+                                        // for (let i = 0; i < 5; i++) {
+                                        //     item[i + 1] = item[i + 1].format();
+                                        // }
+                                        dt.row.add(item);
+                                    }
+                                    dt.draw();
+                                }
+                                break;
+
+                            default:
+                                break;
+                        }
+                    };
+                    WORKERS.trackerSaveWorker.postMessage({a: 'setGTZ', gtz: GAME_TIME_ZONE});
+                },
+                setupObservers () {
+                    OBSERVERS.toggleable.platinum = fn.helpers.initObserver('platinum', 'title', 'td.myplatinum');
+                    OBSERVERS.toggleable.gold = fn.helpers.initObserver('gold', 'title', 'td.mygold');
+                    OBSERVERS.toggleable.mats = fn.helpers.initObserver('mats', 'title', 'td.mycrafting_materials');
+                    OBSERVERS.toggleable.frags = fn.helpers.initObserver('frags', 'title', 'td.mygem_fragments');
+                    OBSERVERS.toggleable.food = fn.helpers.initObserver('food', 'title', 'td.myfood');
+                    OBSERVERS.toggleable.wood = fn.helpers.initObserver('wood', 'title', 'td.mywood');
+                    OBSERVERS.toggleable.iron = fn.helpers.initObserver('iron', 'title', 'td.myiron');
+                    OBSERVERS.toggleable.stone = fn.helpers.initObserver('stone', 'title', 'td.mystone');
+                    OBSERVERS.toggleable.strength = fn.helpers.initObserver('strength', 'data-base', 'td#strength');
+                    OBSERVERS.toggleable.health = fn.helpers.initObserver('health', 'data-base', 'td#health');
+                    OBSERVERS.toggleable.coordination = fn.helpers.initObserver('coordination', 'data-base', 'td#coordination');
+                    OBSERVERS.toggleable.agility = fn.helpers.initObserver('agility', 'data-base', 'td#agility');
+                    OBSERVERS.toggleable.eventAppreviator = OBSERVERS.toggleable.eventAppreviator();
+                },
+
+                setupCSS () {
+                    GM_addStyle(GM_getResourceText('QoLCSS'));
+                },
+                setupHTML () {
+                    // pet hour table
+                    let td = document.createElement('td');
+                    td.insertAdjacentHTML('afterbegin', TEMPLATES.headerHTML);
+                    document.querySelector('#allThemTables > tbody > tr').appendChild(td);
+
+                    // qol hub
+                    document.querySelector('#modalContent').insertAdjacentHTML('beforeend', TEMPLATES.hubHTML);
+                    $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
+                    $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false});
+
+                    // chat limiter
+                    document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', '0 / 400');
+                },
+                setupTemplates () {
+                    let chartsContentTmpl = '';
+                    let chartsTabsTmpl = '';
+
+                    for (let resName of VARIABLES.tracked.stuff.concat(VARIABLES.tracked.stuffDD)) {
+                        if (VARIABLES.tracked.stuffDD.indexOf(resName) === -1) {
+                            chartsTabsTmpl += `<li class="${resName === 'Platinum' ? 'active' : ''}">
     <a href="#RQ-hub-${resName.toLowerCase()}-chart-tab" data-resname="${resName.toLowerCase()}">${resName}</a>
 </li>`;
-            }
-            chartsContentTmpl += `
+                        }
+                        chartsContentTmpl += `
     <div class="tab-pane ${resName === 'Platinum' ? 'active' : ''}" id="RQ-hub-${resName.toLowerCase()}-chart-tab">
         <h3 class="text-center">${resName} gains</h3>
         <div class="text-center" iD="RQ-hub-chart-${resName.toLowerCase()}-subtitle"></div>
@@ -91,87 +565,23 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td colspan="3" class="text-center"><em>No available data</em></td>
-                </tr>
             </tbody>
         </table>
     </div>`;
-        }
+                    }
 
-        chartsTabsTmpl += `<li class="dropdown">
+                    chartsTabsTmpl += `<li class="dropdown">
     <a href="#" data-toggle="dropdown">Base Stats <span class="caret"></span></a>
         <ul class="dropdown-menu">`;
-        for (let resName of trackedStuffDD) {
+                    for (let resName of VARIABLES.tracked.stuffDD) {
 
-            chartsTabsTmpl += `<li class="">
+                        chartsTabsTmpl += `<li class="">
     <a href="#RQ-hub-${resName.toLowerCase()}-chart-tab" data-resname="${resName.toLowerCase()}">${resName}</a>
 </li>`;
-        }
-        chartsTabsTmpl += `</ul></li>`;
+                    }
+                    chartsTabsTmpl += `</ul></li>`;
 
-        let headerHTML = `
-            <table id="QoLStats">
-                <tbody>
-                <tr class="hidden rq-h rq-battle rq-harvest rq-craft rq-carve">
-                    <td class="left">XP / h:</td>
-                    <td class="right" id="XPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
-                </tr>
-                <tr class="hidden rq-h rq-battle">
-                    <td class="left">Clan XP / h:</td>
-                    <td class="right" id="BattleClanXPPerHour" data-toggle="tooltip" title="0" style="color:#FF7;"></td>
-                </tr>
-                <tr class="hidden rq-h rq-battle">
-                    <td class="left">Gold / h:</td>
-                    <td class="right" id="BattleGoldPerHour" data-toggle="tooltip" title="0"
-                        style="color:#FFD700;"></td>
-                </tr>
-                <tr class="hidden rq-h rq-battle">
-                    <td class="left">Clan Gold / h:</td>
-                    <td class="right" id="BattleClanGoldPerHour" data-toggle="tooltip" title="0"
-                        style="color:#FFD700;"></td>
-                </tr>
-                <tr class="hidden rq-h rq-harvest">
-                    <td class="left">Res / h:</td>
-                    <td class="right" id="TSResourcesPerHour" data-toggle="tooltip" title="0"></td>
-                </tr>
-                <tr class="hidden rq-h rq-harvest">
-                    <td class="left">Clan Res / h:</td>
-                    <td class="right" id="TSClanResourcesPerHour" data-toggle="tooltip" title="0"></td>
-                </tr>
-                <tr class="hidden rq-h rq-battle rq-harvest rq-craft rq-carve">
-                    <td class="left">ETA to level:</td>
-                    <td class="right" id="LevelETA" data-toggle="tooltip" title="0"></td>
-                </tr>
-                <tr class="hidden rq-h rq-event-update">
-                    <td class="left">Total participants:</td>
-                    <td class="right" id="EventTotalParticipants"></td>
-                </tr>
-                <tr class="hidden rq-h rq-event-update">
-                    <td class="left">Battlers:</td>
-                    <td class="right" id="EventBattlingParticipants"></td>
-                </tr>
-                <tr class="hidden rq-h rq-event-update">
-                    <td class="left">Havesters:</td>
-                    <td class="right" id="EventHarvestingParticipants"></td>
-                </tr>
-                <tr class="hidden rq-h rq-event-update">
-                    <td class="left">Crafters:</td>
-                    <td class="right" id="EventCraftingParticipants"></td>
-                </tr>
-                <tr class="hidden rq-h rq-event-update">
-                    <td class="left">Carvers:</td>
-                    <td class="right" id="EventCarvingParticipants"></td>
-                </tr>
-                <tr>
-                    <td colspan="2" align="center">
-                        <a href="javascript:void(0)" class="topLink" id="RoA-QoL-open-hub">RoA-QoL Hub</a>
-                    </td>
-                </tr>
-                </tbody>
-            </table>`;
-
-        let hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
+                    TEMPLATES.hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
     <div class="btn-group">
         <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
         <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
@@ -188,7 +598,7 @@
         </div>
         <div id="RQ-hub-stats-info-wrapper" style="display: none;">
             <h3 class="text-center">Strength &raquo; AVG damage</h3>
-            <div class="text-center" iD="RQ-hub-chart-avh-dmg-subtitle"></div>
+            <div class="text-center" iD="RQ-hub-chart-avg-dmg-subtitle"></div>
             <div id="RQ-hub-chart-avg-dmg" style="width:100%;height:300px;"></div>
             <table id="RQ-hub-stats-avg-dmg-data" class="table table-condensed table-bordered rq-styled">
                 <caption class="text-center"></caption>
@@ -209,1239 +619,511 @@
         </div>
     </div>
 </div>`;
+                },
+                setupLoops () {
+                    setInterval(fn.__.saveTracker, 6E4); // once a minute ..
+                    setTimeout(fn.__.checkForUpdate, 6 * 60 * 60 * 1000); // every 6 hours ?
+                    setInterval(fn.__.cleanUpTracker, 1 * 60 * 1000); // every hour
+                },
+                setupVariables () {
+                    // per hour
+                    $('#QoLStats td[id][data-toggle]').each(function (i, e) {
+                        e = $(e);
+                        VARIABLES.QoLStats.e[e.attr('id')] = e;
+                        VARIABLES.QoLStats.d[e.attr('id')] = 0;
 
-        let QoLStats = {
-            e: {},
-            d: {},
-            s: new Date(),
-            b: 0,
-            h: 0,
-            ct: 0,
-            na: 0,
-            PlXPReq: 0,
-            FoodXPReq: 0,
-            WoodXPReq: 0,
-            IronXPReq: 0,
-            StoneXPReq: 0,
-            CrftXPReq: 0,
-            CarvXPReq: 0,
-        };
+                        // $('#XPPerHour, #BattleClanXPPerHour, #BattleGoldPerHour, #BattleClanGoldPerHour, #TSResourcesPerHour, #TSClanResourcesPerHour')
+                        //     .tooltip({placement: 'auto left', container: 'body', html: true});
 
-        let trackerSaveWorker;
+                        $(`#${e.attr('id')}`).tooltip({placement: 'auto left', container: 'body', html: true});
+                    });
+                    VARIABLES.QoLStats.d.BattleXPPerHour = 0;
+                    VARIABLES.QoLStats.d.TSXPPerHour = 0;
+                    VARIABLES.QoLStats.d.CTXPPerHour = 0;
+                    VARIABLES.QoLStats.d.CAXPPerHour = 0;
 
-        // curtesy of http://stackoverflow.com/a/18234317
-        String.prototype.formatQoL = String.prototype.formatQoL || function () {
-            let str = this.toString();
-            if (arguments.length) {
-                let t = typeof arguments[0];
-                let key;
-                let args = ('string' === t || 'number' === t) ?
-                    Array.prototype.slice.call(arguments)
-                    : arguments[0];
+                    VARIABLES.username = document.querySelector('#username').textContent;
 
-                for (key in args) {
-                    str = str.replace(new RegExp('\\{' + key + '\\}', 'gi'), args[key]);
-                }
-            }
+                    VARIABLES.FI = new Favico({animation: 'none'});
+                    VARIABLES.FI.badge('QoL');
 
-            return str;
-        };
+                    VARIABLES.tracked.stuffLC = VARIABLES.tracked.stuff.map(i => i.toLowerCase());
+                    VARIABLES.tracked.stuffDDLC = VARIABLES.tracked.stuffDD.map(i => i.toLowerCase());
 
-        Number.prototype.toTimeEstimate = function () {
-            let _minute = 1000 * 60;
-            let _hour = _minute * 60;
-            let _day = _hour * 24;
-            let _month = _day * 30;
+                    VARIABLES.tracked.stuff.forEach(i => {
+                        VARIABLES.tracked.map[i.toLowerCase()] = i;
+                    });
 
-            let estimate = '~';
-            let num = this.valueOf();
-
-            let months = Math.floor(num / _month);
-            num = num % _month;
-
-            let days = Math.floor(num / _day);
-            num = num % _day;
-
-            let hours = Math.floor(num / _hour);
-            num = num % _hour;
-
-            let minutes = Math.floor(num / _minute);
-
-            if (months > 0) {
-                estimate += `${months}mon, ${days}d`;
-            } else if (days > 0) {
-                estimate += `${days}d, ${hours}h`;
-            } else if (hours > 0) {
-                estimate += `${hours}h, ${minutes}min`;
-            } else if (minutes > 5) {
-                estimate += `${minutes} minutes`;
-            } else {
-                estimate = `~${num.toTimeRemaining()}`;
-            }
-
-            return estimate;
-        };
-
-        Number.prototype.toTimeRemaining = function (colonDelimited = false) {
-            // time in miliseconds, a.k.a. Date.now()
-            let value = this.valueOf() / 1000;
-
-            let seconds = Math.floor(value) % 60;
-            let minutes = Math.floor(value / 60) % 60;
-            let hours = Math.floor(value / 60 / 60) % 60;
-
-            let result = [];
-            if (hours > 0) result.push(`${hours}h`);
-            if (minutes > 0) result.push(`${minutes < 10 ? '0' : ''}${minutes}m`);
-            result.push(`${seconds < 10 ? '0' : ''}${seconds}s`);
-
-            return result.map(item => {
-                if (colonDelimited === true) {
-                    return item.replace(/[^0-9]+/g, '');
-                }
-                return item;
-            }).join(colonDelimited === true ? ':' : ' ');
-        };
-
-        Number.prototype.abbr = function () {
-            let value = this.valueOf();
-
-            let markers = ['', 'k', 'M', 'B', 'T', 'Qa', 'Qi', 'S', 'O', 'N', 'Dd'];
-
-            let index = 0;
-            while (value >= 1000) {
-                index++;
-                value /= 1000;
-            }
-
-            return `${Math.floor(value * 10) / 10}${markers[index]}`;
-        };
-
-        function scrollToBottom (selector) {
-            $(selector).animate({
-                scrollTop: $(selector).prop('scrollHeight'),
-            });
-        }
-
-        function __checkForUpdate () {
-            let version = '';
-
-            fetch(INTERNAL_UPDATE_URI)
-                .then(response => response.json())
-                .then(data => {
-                    let match = atob(data.content).match(/\/\/\s+@version\s+([^\n]+)/);
-                    version = match[1];
-
-                    if (compareVersions(GM_info.script.version, version) < 0) {
-                        let message = `<li>[${moment.tz(gameTimeZone).format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
-                        if (chatDirection === 'up') {
-                            $('#chatMessageList').prepend(message);
-                        } else {
-                            $('#chatMessageList').append(message);
-                            scrollToBottom('#chatMessageListWrapper');
-                        }
-                    } else {
-                        checkForUpdateTimer = setTimeout(__checkForUpdate, 24 * 60 * 60 * 1000);
+                    for (let stat of VARIABLES.tracked.stuffDDLC.concat(VARIABLES.tracked.stuffLC)) {
+                        $(`#RQ-hub-stats-${stat.toLowerCase()}`).DataTable({
+                            searching: false,
+                            ordering: false,
+                            paging: false,
+                            info: false,
+                            aoColumns: [
+                                {sClass: 'text-left'},
+                                {sClass: 'text-right'},
+                                {sClass: 'text-right'},
+                            ],
+                        });
                     }
-                });
-        }
+                },
+                setupLevelRequirements (player) {
+                    VARIABLES.QoLStats.PlXPReq = player.levelCost;
+                    VARIABLES.QoLStats.FoodXPReq = player.fishing.tnl;
+                    VARIABLES.QoLStats.WoodXPReq = player.woodcutting.tnl;
+                    VARIABLES.QoLStats.IronXPReq = player.mining.tnl;
+                    VARIABLES.QoLStats.StoneXPReq = player.stonecutting.tnl;
+                    VARIABLES.QoLStats.CrftXPReq = player.crafting.tnl;
+                    VARIABLES.QoLStats.CarvXPReq = player.carving.tnl;
+                },
 
-        function __getWorker (worker, branch = 'master') {
-            return `${WORKER_DIRECTORY}${worker}Worker.js?ref=${branch}`;
-        }
+                registerFameOwnGemTableObserver () {
+                    OBSERVERS.general.fameOwnGemsObserver.observe(document.querySelector('table#inventoryTable'), {childList: true});
+                    setTimeout(() => {
+                        log('Disconnecting gem list observer');
+                        OBSERVERS.general.fameOwnGemsObserver.disconnect();
+                        log('Reset Gems list');
+                        VARIABLES.gems = {};
+                    }, 2E3);
+                },
 
-        function __setupWorkers () {
-            // because __loadTracker() depends on this loaded ..
-            // an' 'cus I like it
-            fetch(__getWorker('trackerSave', 'dev'))
-                .then(res => res.json())
-                .then(data => {
-                    trackerSaveWorker = new Worker('data:application/javascript;base64,' + data.content);
-                    trackerSaveWorker.onmessage = e => {
-                        let d = e.data;
-
-                        if (typeof d !== 'object') {
-                            return false;
+                saveHouseInfo () {
+                    sessionStorage.setItem('RoAHouse', JSON.stringify(VARIABLES.house));
+                },
+                loadHouseInfo () {
+                    let houseInfo = sessionStorage.getItem('RoAHouse');
+                    if (houseInfo) {
+                        VARIABLES.house = JSON.parse(houseInfo);
+                        //placeholder for changes to this object
+                        fn.__.saveHouseInfo();
+                    }
+                },
+                updateRooms (roomList) {
+                    for (let room of roomList) {
+                        if (!VARIABLES.house.rooms.hasOwnProperty(room.room_type)) {
+                            VARIABLES.house.rooms[room.room_type] = {
+                                items: {},
+                            };
                         }
-
-                        switch (d.a) {
-                            case 'ts': // tracker save
-                                localStorage.setItem(`${trackerSaveKey}-${d.s}`, d.d);
-                                break;
-
-                            case 'tls': // tracker load section
-                                tracker[d.s] = d.d;
-                                break;
-
-                            default:
-                                break;
-                        }
-                    };
-                    __loadTracker();
-                });
-        }
-
-        function __setup () {
-            log('Starting setup');
-            $('<style>').attr('id', 'RoA-QoL-styles').append(`
-        .houseLabel{
-            display: block;
-            text-decoration:
-            none !important;
-        }
-        div#chatMessageWrapper:before {
-            content: attr(data-limiter);
-            font-size: 10px;
-            position: absolute;
-            top: -8px;
-            z-index: 1;
-            background: var(--btn-background-color);
-            border: 1px solid var(--border-color);
-            right: 110px;
-        }
-        .ct-label {
-            color: #d2d2d2;
-        }
-        .ct-series-a .ct-line {
-            stroke-width: 2px;
-            stroke: var(--action-color);
-        }
-        .ct-series-a .ct-point {
-            stroke: var(--action-color);
-            stroke-width: 4px;
-            stroke-linecap: square;
-        }
-        table#QoLStats tbody tr td:first-child {
-            white-space: nowrap;
-            overflow: hidden;
-        }
-        ul#RQ-hub-charts-tabs a {
-            text-decoration: none;
-        }
-        ul#RQ-hub-charts-tabs li.active a, ul#RQ-hub-charts-tabs li a:hover {
-            background: var(--btn-background-color);
-            color: #fff;
-        }
-        div#RQ-hub-wrapper div.tab-pane.active {
-            color: #fff;
-        }
-        .dygraph-legend {
-            background: var(--btn-background-color);
-        }
-        .dygraph-legend > span {
-            display: block;
-        }
-        .dygraph-axis-label {
-            color: #fff;
-        }
-        div#RQ-hub-wrapper table.rq-styled thead th {
-            background-image: linear-gradient(to bottom,var(--header-gradient-first-color) 0,var(--header-gradient-second-color) 100%);
-        }
-        div#RQ-hub-wrapper table.rq-styled,
-        div#RQ-hub-wrapper table.rq-styled * {
-            border-color: var(--border-color);
-        }
-        `).appendTo('body');
-            $('<td>').append(headerHTML)
-                .addClass('col-xs-2 hidden-xs hidden-sm')
-                .appendTo('#allThemTables > tbody > tr');
-            $('#QoLStats [id]').each(function (i, e) {
-                e = $(e);
-                QoLStats.e[e.attr('id')] = e;
-                QoLStats.d[e.attr('id')] = 0;
-            });
-            $('#modalContent').append(hubHTML);
-            $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false});
-            $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
-            QoLStats.d.BattleXPPerHour = 0;
-            QoLStats.d.TSXPPerHour = 0;
-            QoLStats.d.CTXPPerHour = 0;
-
-            __setupWorkers();
-            __loadHouseInfo();
-            setInterval(__saveTracker, 6E4); // once a minute ..
-            setTimeout(__checkForUpdate, 5E3);
-            setTimeout(__saveTracker, 3E4);
-
-            FI = new Favico({animation: 'none'});
-            FI.badge(0);
-
-            $('#XPPerHour, #BattleClanXPPerHour, #BattleGoldPerHour, #BattleClanGoldPerHour, #TSResourcesPerHour, #TSClanResourcesPerHour')
-                .tooltip({placement: 'auto left', container: 'body', html: true});
-            $('#chatMessageWrapper').attr('data-limiter', '0 / 400');
-            username = $('#username').text();
-            GM_addStyle(GM_getResourceText('DygraphCSS'));
-            GM_addStyle(GM_getResourceText('ChartistCSS'));
-            GM_addStyle(GM_getResourceText('ChartistTTipCSS'));
-
-            __platObserver();
-            __goldObserver();
-            __matsObserver();
-            __fragsObserver();
-            __foodObserver();
-            __woodObserver();
-            __ironObserver();
-            __stoneObserver();
-            __strengthObserver();
-            __healthObserver();
-            __coordinationObserver();
-            __agilityObserver();
-            __eventUpdatesObserver();
-        }
-
-        function __saveHouseInfo () {
-            sessionStorage.setItem('RoAHouse', JSON.stringify(house));
-        }
-
-        function __loadHouseInfo () {
-            log('Loading house info');
-            let houseInfo = sessionStorage.getItem('RoAHouse');
-            if (houseInfo) {
-                house = JSON.parse(houseInfo);
-                //placeholder for changes to this object
-                __saveHouseInfo();
-            }
-        }
-
-        function __updateRooms (roomList) {
-            for (let room of roomList) {
-                if (!house.rooms.hasOwnProperty(room.room_type)) {
-                    house.rooms[room.room_type] = {
-                        items: {},
-                    };
-                }
-                house.roomNameMap[room.room_type] = room.name;
-            }
-        }
-
-        function __updateHouseRoom (roomType, items) {
-            for (let item of items) {
-                house.rooms[roomType].items[item.item_type] = item;
-                setTimeout(__setRoomItemTooltip, 500, roomType, item.item_type, item);
-            }
-        }
-
-        function __setRoomItemTooltip (roomType, itemType, data) {
-            let tooltip = `<h5>Level upgrade</h5>
+                        VARIABLES.house.roomNameMap[room.room_type] = room.name;
+                    }
+                },
+                updateHouseRoom (roomType, items) {
+                    for (let item of items) {
+                        VARIABLES.house.rooms[roomType].items[item.item_type] = item;
+                        setTimeout(fn.__.setRoomItemTooltip, 500, roomType, item.item_type, item);
+                    }
+                },
+                setRoomItemTooltip (roomType, itemType, data) {
+                    let tooltip = `<h5>Level upgrade</h5>
         <a class="houseLabel">Cost</a>
             <div>${data.level_upgrade_cost}</div>
             <a class="houseLabel">Time</a>
             <div>${data.level_upgrade_time}</div>`;
-            $(`a[data-roomtype="${roomType}"][data-itemtype="${itemType}"]`).tooltip({
-                placement: 'auto left',
-                html: true,
-                container: 'body',
-                title: tooltip,
-            });
-        }
+                    $(`a[data-roomtype="${roomType}"][data-itemtype="${itemType}"]`).tooltip({
+                        placement: 'auto left',
+                        html: true,
+                        container: 'body',
+                        title: tooltip,
+                    });
+                },
 
-        function _handleHouseData (type, data) {
-            if (type === 'house') {
-                __updateRooms(data.rooms);
-            } else if (type === 'room') {
-                __updateHouseRoom(data.room.room_type, data.room.items);
-            }
-            __saveHouseInfo();
-        }
-
-        function __toggleBattle () {
-            // log('Switching to battle');
-            $('.rq-h').addClass('hidden');
-            $('.rq-h.rq-battle').removeClass('hidden');
-        }
-
-        function __toggleTS () {
-            // log('Switching to TS');
-            $('.rq-h').addClass('hidden');
-            $('.rq-h.rq-harvest').removeClass('hidden');
-        }
-
-        function __toggleCT () {
-            // log('Switching to TS');
-            $('.rq-h').addClass('hidden');
-            // $('.rq-h.rq-harvest').removeClass('hidden');
-        }
-
-        function __toggleEU () {
-            // log('Switching to TS');
-            $('.rq-h').addClass('hidden');
-            $('.rq-h.rq-event-update').removeClass('hidden');
-        }
-
-        function __updateFavico (to, text = null, bg = null) {
-            let _bg = bg;
-            if (bg === null) {
-                _bg = parseInt(to) > 0 ? '#050' : '#a00';
-            }
-            let _text = text === null ? Math.abs(to) : text;
-            FI.badge(_text, {bgColor: _bg});
-        }
-
-        function __updateStats (type, data) {
-            let now = new Date();
-            let hour = 60 * 60 * 1000;
-            let tmpl = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h';
-            let map = {};
-            let count = 0;
-            if (type === 'battle') {
-                map = {
-                    XPPerHour: {d: 'BattleXPPerHour', l: 'XP', c: data.xp},
-                    BattleGoldPerHour: {d: '', l: 'Gold', c: data.g},
-                    BattleClanXPPerHour: {d: '', l: 'XP', c: data.cxp},
-                    BattleClanGoldPerHour: {d: '', l: 'Gold', c: data.cg},
-                };
-                count = QoLStats.b;
-            } else if (type === 'TS') {
-                map = {
-                    XPPerHour: {d: 'TSXPPerHour', l: 'XP', c: data.xp},
-                    TSResourcesPerHour: {d: '', l: 'Resources', c: data.a},
-                    TSClanResourcesPerHour: {d: '', l: 'Resources', c: data.ca},
-                };
-                count = QoLStats.h;
-            } else if (type === 'Crafting') {
-                map = {
-                    XPPerHour: {d: 'CTXPPerHour', l: 'XP', c: data.xp},
-                };
-                count = QoLStats.ct;
-            }
-            // console.log(map);
-            for (let e in map) {
-                let ed = map[e].d !== '' ? map[e].d : e;
-
-                //"<h5>Based upon</h5>" + commatize(Math.floor(startXP))+" XP over "+battles+" battles since "+startTime.toLocaleString()+"<h5>Would be gain / h</h5>"+commatize(Math.floor((60*60*1000/jsonres.p.next_action)*xp))+" / h"
-                let obj = {
-                    total: QoLStats.d[ed].format(),
-                    label: map[e].l,
-                    count: count.format(),
-                    since: moment.tz(QoLStats.s, gameTimeZone).format('MMM Do Y HH:mm:ss'),
-                    type: `${type} actions`,
-                    wannabe: (Math.floor(hour / QoLStats.na * map[e].c)).format(),
-                };
-
-                QoLStats.e[e].text((QoLStats.d[ed] / (now - QoLStats.s) * hour).format())
-                    .attr({'data-original-title': tmpl.formatQoL(obj)});
-            }
-        }
-
-        function __logAvgDmg (battle) {
-            if (battle.b.r === 0) {
-                return;
-            }
-
-            let dmgType = $('#weaponskill').text().split(' ')[0];
-            if (!tracker.avgDmStrStat.hasOwnProperty(dmgType)) {
-                tracker.avgDmStrStat[dmgType] = {};
-            }
-
-            if (!tracker.avgDmStrStat[dmgType].hasOwnProperty(battle.p.strength.base)) {
-                tracker.avgDmStrStat[dmgType][battle.p.strength.base] = {
-                    total: battle.p.strength.total,
-                    dmg: 0,
-                    a: 0,
-                    s: Date.now(),
-                };
-            }
-            tracker.avgDmStrStat[dmgType][battle.p.strength.base].dmg += battle.b.p.dm;
-            tracker.avgDmStrStat[dmgType][battle.p.strength.base].a++;
-        }
-
-        function __battle (data) {
-            __toggleBattle();
-            QoLStats.b++;
-            if (data.hasOwnProperty('b')) {
-                QoLStats.d.BattleXPPerHour += data.b.xp;
-                QoLStats.d.BattleGoldPerHour += data.b.g;
-                QoLStats.d.BattleClanXPPerHour += data.b.hasOwnProperty('cxp') ? data.b.cxp : 0;
-                QoLStats.d.BattleClanGoldPerHour += data.b.hasOwnProperty('cg') ? data.b.cg : 0;
-                if (QoLStats.PlXPReq > 0 && data.b.r === 1) { // won
-                    let eta;
-                    if (data.b.xp === 0) {
-                        eta = 'never';
-                    } else {
-                        eta = (QoLStats.PlXPReq - data.p.currentXP) / data.b.xp * data.p.next_action;
-                        eta = eta.toTimeEstimate();
+                logAvgDmg (battle) {
+                    if (battle.b.r === 0) {
+                        return;
                     }
-                    QoLStats.e.LevelETA.text(eta);
-                }
-                __logAvgDmg(data);
-            }
-            QoLStats.na = data.p.next_action;
 
-            __updateStats('battle', data.b);
-            __updateFavico(data.p.autos_remaining);
-        }
-
-        function __TS (data) {
-            __toggleTS();
-            QoLStats.h++;
-            if (data.hasOwnProperty('a')) {
-                QoLStats.d.TSXPPerHour += data.a.xp;
-                QoLStats.d.TSResourcesPerHour += data.a.hasOwnProperty('a') ? data.a.a : 0;
-                QoLStats.d.TSClanResourcesPerHour += data.a.hasOwnProperty('ca') ? data.a.ca : 0;
-                QoLStats.e.TSResourcesPerHour.removeClass('food wood iron stone').addClass(data.a.r);
-                let token = data.a.r;
-                token = token.charAt(0).toUpperCase() + token.substr(1) + 'XPReq';
-                let skill = data.a.s;
-                QoLStats[token] = data.p[skill].tnl;
-                let eta;
-                if (data.a.xp === 0) {
-                    eta = 'never';
-                } else {
-                    eta = (QoLStats[token] - data.p[skill].xp) / data.a.xp * data.p.next_action;
-                    eta = eta.toTimeEstimate();
-                }
-                QoLStats.e.LevelETA.text(eta);
-            }
-            QoLStats.na = data.p.next_action;
-            __updateStats('TS', data.a);
-            __updateFavico(data.p.autos_remaining);
-        }
-
-        function __CT (data) {
-            __toggleCT();
-            QoLStats.ct++;
-            if (data.hasOwnProperty('a')) {
-                QoLStats.d.CTXPPerHour += data.a.xp;
-                let token = 'CTXPReq';
-                QoLStats[token] = data.p['crafting'].tnl;
-                let eta;
-                if (data.a.xp === 0) {
-                    eta = 'never';
-                } else {
-                    eta = (QoLStats[token] - data.p['crafting'].xp) / data.a.xp * data.p.next_action;
-                    eta = eta.toTimeEstimate();
-                }
-                QoLStats.e.LevelETA.text(eta);
-            }
-            QoLStats.na = data.p.next_action;
-            __updateStats('Crafting', data.a);
-            __updateFavico(data.p.autos_remaining);
-        }
-
-        function __setupLevelRequirements (player) {
-            log('Setup level reqs');
-            QoLStats.PlXPReq = player.levelCost;
-            QoLStats.FoodXPReq = player.fishing.tnl;
-            QoLStats.WoodXPReq = player.woodcutting.tnl;
-            QoLStats.IronXPReq = player.mining.tnl;
-            QoLStats.StoneXPReq = player.stonecutting.tnl;
-            QoLStats.CrftXPReq = player.crafting.tnl;
-            QoLStats.CarvXPReq = player.carving.tnl;
-        }
-
-        function _processBattle (message) {
-            if (message.hasOwnProperty('results')) {
-                __battle(message.results);
-            }
-        }
-
-        function _processTS (message) {
-            if (message.hasOwnProperty('results')) {
-                __TS(message.results);
-            }
-        }
-
-        function _processCraft (message) {
-            if (message.hasOwnProperty('results')) {
-                __CT(message.results);
-            }
-        }
-
-        function _processLI (data) {
-            // dunno yet
-            if (data.hasOwnProperty('p')) {
-                __setupLevelRequirements(data.p);
-                if (data.p.hasOwnProperty('chatScroll')) {
-                    _setChatDirection(data.p.chatScroll);
-                }
-            }
-        }
-
-        function _processEventUpdate (message) {
-            __toggleEU();
-            $('#EventTotalParticipants').text((message.attacker_count + message.harvester_count + message.crafter_count + message.carver_count).format());
-            $('#EventBattlingParticipants').text(message.attacker_count.format());
-            $('#EventHarvestingParticipants').text(message.harvester_count.format());
-            $('#EventCraftingParticipants').text(message.crafter_count.format());
-            $('#EventCarvingParticipants').text(message.carver_count.format());
-        }
-
-        function _processEventAction (message) {
-            __updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true).replace(':', ''), '#ff1493');
-        }
-
-        function _updateMSGLimit (msgBox) {
-            let lng = $(msgBox).text().replace(/\/(w [^\s]+ |r |re |me |m |h |c |t |a |wire.*)/i, '').length;
-            $('#chatMessageWrapper').attr('data-limiter', `${lng} / 400`);
-        }
-
-        function __platObserver () {
-            log('Starting plat observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.platinum[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
+                    let dmgType = $('#weaponskill').text().split(' ')[0];
+                    if (!VARIABLES.tracker.avgDmStrStat.hasOwnProperty(dmgType)) {
+                        VARIABLES.tracker.avgDmStrStat[dmgType] = {};
                     }
-                }
-            });
-            o.observe(document.querySelector('td.myplatinum'), {attributes: true, attributeOldValue: true});
-        }
 
-        function __goldObserver () {
-            log('Starting gold observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.gold[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
+                    if (!VARIABLES.tracker.avgDmStrStat[dmgType].hasOwnProperty(battle.p.strength.base)) {
+                        VARIABLES.tracker.avgDmStrStat[dmgType][battle.p.strength.base] = {
+                            total: battle.p.strength.total,
+                            dmg: 0,
+                            a: 0,
+                            s: Date.now(),
+                        };
                     }
-                }
-            });
-            o.observe(document.querySelector('td.mygold'), {attributes: true, attributeOldValue: true});
-        }
+                    VARIABLES.tracker.avgDmStrStat[dmgType][battle.p.strength.base].dmg += battle.b.p.dm;
+                    VARIABLES.tracker.avgDmStrStat[dmgType][battle.p.strength.base].a++;
+                },
 
-        function __matsObserver () {
-            log('Starting mats observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.mats[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td.mycrafting_materials'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __fragsObserver () {
-            log('Starting frags observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.frags[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td.mygem_fragments'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __foodObserver () {
-            log('Starting food observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.food[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td.myfood'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __woodObserver () {
-            log('Starting wood observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.wood[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td.mywood'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __ironObserver () {
-            log('Starting iron observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.iron[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td.myiron'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __stoneObserver () {
-            log('Starting stone observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'title') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.stone[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td.mystone'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __strengthObserver () {
-            log('Starting stat strength observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.strength[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td#strength'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __healthObserver () {
-            log('Starting stat health observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.health[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td#health'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __coordinationObserver () {
-            log('Starting stat coordination observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.coordination[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td#coordination'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __agilityObserver () {
-            log('Starting stat agility observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type === 'attributes' && m.attributeName === 'data-base') {
-                        let oldValue = m.oldValue;
-                        let nowValue = m.target.getAttribute(m.attributeName);
-                        if (oldValue && nowValue && oldValue !== nowValue) {
-                            tracker.agility[(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
-                        }
-                    }
-                }
-            });
-            o.observe(document.querySelector('td#agility'), {attributes: true, attributeOldValue: true});
-        }
-
-        function __eventUpdatesObserver () {
-            log('Starting gauntlet battler msg abbreviator');
-            let regexes = {
-                attack: /You .+ (Bow|Sword|Staff|fists).+([0-9]+ times? hitting [0-9]+ times?), dealing .+ damage.$/i,
-                // You cast 1 spell at [Vermin] Boss Forty-two, dealing 2,127,514,765 damage.
-                spellcast: /^You cast [0-9]+ spell.+dealing .+ damage.$/i,
-                summary: /([0-9,]+ adventurers? (have|has) ([^\s]+)(, dealing)? [0-9,]+)/g,
-                heal: /You healed [0-9,]+ HP!$/i,
-                counter: /You counter .+ ([0-9,]+ times?).+ dealing .* damage.$/i,
-                bosshit: /^\[.+\] Boss .+ dealing [0-9,]+ damage\.$/,
-                bossmiss: /^\[.+\] Boss .+ but misses!$/i,
-                res: /^You found ([0-9,]+) ([a-z]+)\.$/i,
-                craft: /^You smashed down .* Hammer ([0-9,]+) times\. .* (\+[0-9,.%]+ [a-z\s]+) to the item\.$/i,
-                craft_sub: /(\+[0-9,.%]+ [a-z\s]+)/ig,
-                carve: /^You carefully slice.*Saw ([0-9,]+) times?\..+ ([0-9,]+)\.$/i,
-            };
-            o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.addedNodes.length) {
-                        let a = m.addedNodes[0].textContent;
-
-                        let parse;
-
-                        if ((parse = a.match(regexes.attack)) !== null) {
-                            let spans = m.addedNodes[0].querySelectorAll('span:not(.ally)');
-                            let iconMap = {
-                                'bow' : '\uD83C\uDFF9 ',
-                                'sword' : '\u2694 ',
-                                'staff' : '\u2728 ',
-                                'fists' : '\uD83D\uDC4A ',
-                            };
-                            m.addedNodes[0].innerHTML = '';
-                            m.addedNodes[0].appendChild(document.createTextNode(iconMap[parse[1].toLowerCase()] + ' +'));
-                            let dmgSpan = spans[spans.length === 4 ? 3 : 2];
-                            dmgSpan.setAttribute('title', spans[spans.length === 4 ? 2 : 1].textContent);
-                            m.addedNodes[0].appendChild(dmgSpan); // dmg
-                            m.addedNodes[0].appendChild(document.createTextNode(' damage'));
-                            let attemptsAndHits = parse[2].replace('times hitting', 'attempts').replace('times', 'hits');
-                            m.addedNodes[0].appendChild(document.createTextNode(` (${attemptsAndHits}`));
-                            if (spans.length === 4) {
-                                m.addedNodes[0].appendChild(document.createTextNode(` / `));
-                                m.addedNodes[0].appendChild(spans[0]);
+                saveTracker () {
+                    WORKERS.trackerSaveWorker.postMessage({a: 'trackerSave', t: VARIABLES.tracker});
+                },
+                loadTracker () {
+                    let _tracker = {};
+                    let _tracker1 = localStorage.getItem(TRACKER_SAVE_KEY);
+                    let _tracker2 = localStorage.getItem(`${TRACKER_SAVE_KEY}-platinum`);
+                    if (_tracker2) {
+                        for (let section in VARIABLES.tracker) {
+                            let sectionData = localStorage.getItem(`${TRACKER_SAVE_KEY}-${section}`);
+                            if (sectionData) {
+                                WORKERS.trackerSaveWorker.postMessage({
+                                    a: 'trackerLoadSection',
+                                    s: section,
+                                    d: sectionData,
+                                });
                             }
-                            m.addedNodes[0].appendChild(document.createTextNode(`)`));
-                        } else if ((parse = a.match(regexes.spellcast)) !== null) {
-                            let spans = m.addedNodes[0].querySelectorAll('span:not(.ally)');
+                        }
+                    } else if (_tracker1) {
+                        try {
+                            _tracker = JSON.parse(_tracker1);
+                        } catch (e) {
+                            log(`Failure while loading tracker info "${e.message}"`);
+                            _tracker = VARIABLES.tracker;
+                        }
+                        VARIABLES.tracker = _tracker;
+                        // changes for 1.0.6
+                        if (!VARIABLES.tracker.hasOwnProperty('gold')) {
+                            VARIABLES.tracker.gold = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('mats')) {
+                            VARIABLES.tracker.mats = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('frags')) {
+                            VARIABLES.tracker.frags = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('food')) {
+                            VARIABLES.tracker.food = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('wood')) {
+                            VARIABLES.tracker.wood = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('iron')) {
+                            VARIABLES.tracker.iron = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('stone')) {
+                            VARIABLES.tracker.stone = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('strength')) {
+                            VARIABLES.tracker.strength = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('health')) {
+                            VARIABLES.tracker.health = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('coordination')) {
+                            VARIABLES.tracker.coordination = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('agility')) {
+                            VARIABLES.tracker.agility = {};
+                        }
+                        if (!VARIABLES.tracker.hasOwnProperty('avgDmStrStat')) {
+                            VARIABLES.tracker.avgDmStrStat = {};
+                        }
+                        fn.__.saveTracker();
+                    }
+                    if (_tracker1) { // not yet, just in case
+                        localStorage.removeItem(TRACKER_SAVE_KEY);
+                    }
+                },
+                cleanUpTracker () {
+                    for (section in VARIABLES.tracker) {
+                        if (section === 'avgDmStrStat') {
+                            continue;
+                        }
+                        WORKERS.trackerProccessor.postMessage({
+                            a: 'trackerCleanup',
+                            d: VARIABLES.tracker[section],
+                            i: section,
+                            mc: VARIABLES.twoWeeksago,
+                        });
+                    }
+                },
 
-                            m.addedNodes[0].innerHTML = '';
-                            // m.addedNodes[0].appendChild(document.createTextNode('\u2606\u5F61 +'));
-                            m.addedNodes[0].appendChild(document.createTextNode('\uD83C\uDF20 +'));
-                            let dmgSpan = spans[2];
-                            dmgSpan.setAttribute('title', spans[1].textContent);
-                            m.addedNodes[0].appendChild(dmgSpan); // dmg
-                            m.addedNodes[0].appendChild(document.createTextNode(' damage'));
-                            m.addedNodes[0].appendChild(document.createTextNode(` (${spans[0].textContent})`));
-                        } else if ((parse = a.match(regexes.summary)) !== null) {
-                            let spans = m.addedNodes[0].querySelectorAll('span');
-                            m.addedNodes[0].innerHTML = '';
+                showStats () {
+                    document.querySelector('#RQ-hub-stats-avg-dmg-data tbody').innerHTML = '<tr><td colspan="6" class="text-center"><em>No available data</em></td></tr>';
 
-                            let xAdv;
+                    let currentSkill = document.querySelector('#weaponskill').textContent.split(' ')[0];
+                    if (!VARIABLES.tracker.avgDmStrStat.hasOwnProperty(currentSkill)) {
+                        return;
+                    }
+                    document.querySelector('#RQ-hub-chart-avg-dmg-subtitle').textContent = currentSkill;
+                    WORKERS.trackerProccessor.postMessage({
+                        a: 'processStatAvgDamage',
+                        cs: currentSkill,
+                        d: VARIABLES.tracker.avgDmStrStat[currentSkill],
+                    });
+                },
+                showChart (elem, name = '', data = []) {
+                    if (data.length) {
+                        new Dygraph(document.querySelector(elem), data, {
+                            labels: ['Time', name],
+                            axes: {
+                                y: {
+                                    valueFormatter: val => val.format(),
+                                    axisLabelFormatter: val => val.abbr(),
+                                },
+                                x: {
+                                    valueFormatter: val => moment.tz(val, GAME_TIME_ZONE).format('Do MMM HH:mm:ss'),
+                                },
+                            },
+                        });
+                    }
+                },
+                showTrackerStatsSection (section) {
+                    let list = VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC);
+                    if (null === section || list.indexOf(section) === -1) {
+                        section = VARIABLES.hub.subtab;
+                    }
 
-                            xAdv = spans[0];
-                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
-                            m.addedNodes[0].appendChild(xAdv);
-                            m.addedNodes[0].appendChild(spans[1]);
-                            m.addedNodes[0].appendChild(document.createTextNode(' resources, '));
+                    VARIABLES.hub.subtab = section;
 
-                            xAdv = spans[2];
-                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
-                            m.addedNodes[0].appendChild(xAdv);
-                            m.addedNodes[0].appendChild(spans[3]);
-                            m.addedNodes[0].appendChild(document.createTextNode(' damage, '));
+                    document.querySelector(`#RQ-hub-stats-${section} tbody`).innerHTML = '<tr><td colspan="3" class="text-center"><em>Loading data ...</em></td></tr>';
+                    WORKERS.trackerProccessor.postMessage({
+                        a: 'processItem',
+                        d: VARIABLES.tracker[section],
+                        i: section,
+                        mc: VARIABLES.twoWeeksago,
+                    });
+                },
 
-                            xAdv = spans[4];
-                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
-                            m.addedNodes[0].appendChild(xAdv);
-                            m.addedNodes[0].appendChild(spans[5]);
-                            m.addedNodes[0].appendChild(document.createTextNode(' bonuses and '));
+                startup () {
+                    return {
+                        'Starting save worker ..': fn.__.setupWorkers,
+                        'Setting up styles ..': fn.__.setupCSS,
+                        'Setting up templates ..': fn.__.setupTemplates,
+                        'Setting up HTML ..': fn.__.setupHTML,
+                        'Setting up variables ..': fn.__.setupVariables,
+                        'Setting up observers ..': fn.__.setupObservers,
+                        'Starting loops ..': fn.__.setupLoops,
+                        'Loading tracker info': fn.__.loadTracker,
+                        'Loading house info': fn.__.loadHouseInfo,
+                    };
+                },
 
-                            xAdv = spans[6];
-                            xAdv.textContent = xAdv.textContent.replace(/.+/, '+');
-                            m.addedNodes[0].appendChild(xAdv);
-                            m.addedNodes[0].appendChild(spans[7]);
-                            m.addedNodes[0].appendChild(document.createTextNode(' resonance'));
-                        } else if ((parse = a.match(regexes.heal)) !== null) {
-                            let span = m.addedNodes[0].querySelector('span');
-                            m.addedNodes[0].innerHTML = '';
+                init () {
+                    log('Starting up ..');
+                    let startup = fn.__.startup();
+                    for (let message in startup) {
+                        if (!startup.hasOwnProperty(message)) {
+                            continue;
+                        }
+                        log(message);
+                        startup[message]();
+                    }
+                },
+            },
+            /** public QoL object methods */
+            API: {
+                addFameOwnGemsButton (gems) {
+                    for (let gem of gems) {
+                        VARIABLES.gems[gem.i] = gem;
+                    }
+                    fn.__.registerFameOwnGemTableObserver();
+                },
 
-                            m.addedNodes[0].appendChild(document.createTextNode('+'));
-                            m.addedNodes[0].appendChild(span);
-                        } else if ((parse = a.match(regexes.counter)) !== null) {
-                            let spans = m.addedNodes[0].querySelectorAll('span');
-                            m.addedNodes[0].innerHTML = '';
+                handleHouseData (type, data) {
+                    if (type === 'house') {
+                        fn.__.updateRooms(data.rooms);
+                    } else if (type === 'room') {
+                        fn.__.updateHouseRoom(data.room.room_type, data.room.items);
+                    }
+                    fn.__.saveHouseInfo();
+                },
 
-                            m.addedNodes[0].appendChild(document.createTextNode('\u2194'));
-                            m.addedNodes[0].appendChild(spans[1]);
-                            m.addedNodes[0].appendChild(document.createTextNode(` (${parse[1]})`));
-                        } else if ((parse = a.match(regexes.bosshit)) !== null) {
-                            let span = m.addedNodes[0].querySelector('span:last-child');
-                            m.addedNodes[0].innerHTML = '';
+                setChatDirection (dir) {
+                    VARIABLES.chatDirection = dir;
+                },
+                updateMessageLimit (msgBox) {
+                    let lng = $(msgBox).text().replace(/\/(w [^\s]+ |r |re |me |m |h |c |t |a |wire.*)/i, '').length;
+                    $('#chatMessageWrapper').attr('data-limiter', `${lng} / 400`);
+                },
 
-                            m.addedNodes[0].appendChild(document.createTextNode('\uD83C\uDFAF'));
-                            m.addedNodes[0].appendChild(span);
-                        } else if ((parse = a.match(regexes.bossmiss)) !== null) {
-                            let boss = m.addedNodes[0].querySelector('span:first-child');
-                            m.addedNodes[0].innerHTML = '';
-                            let span = document.createElement('span');
-                            span.setAttribute('title', boss.textContent);
-                            span.textContent = '\uD83D\uDF9C boss missed';
-                            m.addedNodes[0].appendChild(span);
-                        } else if ((parse = a.match(regexes.res)) !== null) {
-                            let iconMap = {
-                                'food' : '\uD83C\uDFA3 ',
-                                'wood' : '\uD83C\uDF32 ',
-                                'iron' : '\u26CF ',
-                                'stone' : '\uD83D\uDC8E ',
-                            };
-                            m.addedNodes[0].innerHTML = '';
-                            m.addedNodes[0].appendChild(document.createTextNode(`${iconMap[parse[2]]} `));
-
-                            let span = document.createElement('span');
-                            span.classList.add(parse[2]);
-                            span.textContent = `+${parse[1]} ${parse[2]}`;
-                            m.addedNodes[0].appendChild(span);
-                        } else if ((parse = a.match(regexes.craft)) !== null) {
-                            let parse2 =  a.match(regexes.craft_sub);
-                            parse2 = parse2.map(item => item.replace(' to the item', ''));
-                            m.addedNodes[0].innerHTML = '';
-                            m.addedNodes[0].appendChild(document.createTextNode(`\uD83D\uDD28 `));
-
-                            let span = document.createElement('span');
-                            span.classList.add('crafting');
-                            span.textContent = `+${parse[1]} bonuses`;
-                            span.setAttribute('title', `${parse2.join('\n')}`);
-                            m.addedNodes[0].appendChild(span);
-                        } else if ((parse = a.match(regexes.carve)) !== null) {
-                            let parse2 =  a.match(regexes.craft_sub);
-                            m.addedNodes[0].innerHTML = '';
-                            m.addedNodes[0].appendChild(document.createTextNode(`\uD83D\uDC8E `));
-
-                            let span = document.createElement('span');
-                            span.classList.add('carving');
-                            span.textContent = `+${parse[2]} resonance`;
-                            m.addedNodes[0].appendChild(span);
-                        } else {
-                            console.log(m.addedNodes[0].outerHTML);
-                            console.log(m.addedNodes[0].textContent);
+                processLoginInfo (data) {
+                    if (data.hasOwnProperty('p')) {
+                        fn.__.setupLevelRequirements(data.p);
+                        if (data.p.hasOwnProperty('chatScroll')) {
+                            fn.API.setChatDirection(data.p.chatScroll);
                         }
                     }
-                }
-            });
-            o.observe(document.querySelector('#gauntletText'), {childList: true});
-        }
+                },
 
-        function __saveTracker () {
-            log('Saving tracker');
-            trackerSaveWorker.postMessage({a:'trackerSave', t:tracker});
-        }
+                processBattle (message) {
+                    if (message.hasOwnProperty('results')) {
+                        let data = message.results;
 
-        function __loadTracker () {
-            log('Loading tracker');
-            let _tracker = {};
-            let _tracker1 = localStorage.getItem(trackerSaveKey);
-            let _tracker2 = localStorage.getItem(`${trackerSaveKey}-platinum`);
-            if (_tracker2) {
-                for (let section in tracker) {
-                    let sectionData = localStorage.getItem(`${trackerSaveKey}-${section}`);
-                    if (sectionData) {
-                        trackerSaveWorker.postMessage({a:'trackerLoadSection',s:section,d:sectionData});
+                        fn.helpers.togglePerHourSection('battle');
+
+                        VARIABLES.QoLStats.b++;
+                        if (data.hasOwnProperty('b')) {
+                            VARIABLES.QoLStats.d.BattleXPPerHour += data.b.xp;
+                            VARIABLES.QoLStats.d.BattleGoldPerHour += data.b.g;
+                            VARIABLES.QoLStats.d.BattleClanXPPerHour += data.b.hasOwnProperty('cxp') ? data.b.cxp : 0;
+                            VARIABLES.QoLStats.d.BattleClanGoldPerHour += data.b.hasOwnProperty('cg') ? data.b.cg : 0;
+                            if (VARIABLES.QoLStats.PlXPReq > 0 && data.b.r === 1) { // won
+                                let eta;
+                                if (data.b.xp === 0) {
+                                    eta = 'never';
+                                } else {
+                                    eta = (VARIABLES.QoLStats.PlXPReq - data.p.currentXP) / data.b.xp * data.p.next_action;
+                                    console.log(eta);
+                                    console.log(eta.toTimeEstimate());
+                                    eta = eta.toTimeEstimate();
+                                }
+                                VARIABLES.QoLStats.e.LevelETA.text(eta);
+                            }
+                            fn.__.logAvgDmg(data);
+                        }
+                        VARIABLES.QoLStats.na = data.p.next_action;
+
+                        fn.helpers.updateStats('battle', data.b);
+                        fn.helpers.updateFavico(data.p.autos_remaining);
                     }
-                }
-                // if (_tracker1) { // not yet, just in case
-                //     localStorage.removeItem(trackerSaveKey);
-                // }
-            } else if (_tracker1) {
-                try {
-                    _tracker = JSON.parse(_tracker1);
-                } catch (e) {
-                    log(`Failure while loading tracker info "${e.message}"`);
-                    _tracker = tracker;
-                }
-                tracker = _tracker;
-                // changes for 1.0.6
-                if (!tracker.hasOwnProperty('gold')) {
-                    tracker.gold = {};
-                }
-                if (!tracker.hasOwnProperty('mats')) {
-                    tracker.mats = {};
-                }
-                if (!tracker.hasOwnProperty('frags')) {
-                    tracker.frags = {};
-                }
-                if (!tracker.hasOwnProperty('food')) {
-                    tracker.food = {};
-                }
-                if (!tracker.hasOwnProperty('wood')) {
-                    tracker.wood = {};
-                }
-                if (!tracker.hasOwnProperty('iron')) {
-                    tracker.iron = {};
-                }
-                if (!tracker.hasOwnProperty('stone')) {
-                    tracker.stone = {};
-                }
-                if (!tracker.hasOwnProperty('strength')) {
-                    tracker.strength = {};
-                }
-                if (!tracker.hasOwnProperty('health')) {
-                    tracker.health = {};
-                }
-                if (!tracker.hasOwnProperty('coordination')) {
-                    tracker.coordination = {};
-                }
-                if (!tracker.hasOwnProperty('agility')) {
-                    tracker.agility = {};
-                }
-                if (!tracker.hasOwnProperty('avgDmStrStat')) {
-                    tracker.avgDmStrStat = {};
-                }
-                __saveTracker();
-            }
-        }
+                },
+                processTS (message) {
+                    if (message.hasOwnProperty('results')) {
+                        let data = message.results;
+                        fn.helpers.togglePerHourSection('harvest');
 
-        function __registerFameOwnGemTableObserver () {
-            log('Starting gem list observer');
-            let o = new MutationObserver(function (ml) {
-                for (let m of ml) {
-                    if (m.type !== 'childList' || m.addedNodes.length === 0) {
-                        continue;
+                        VARIABLES.QoLStats.h++;
+                        if (data.hasOwnProperty('a')) {
+                            VARIABLES.QoLStats.d.TSXPPerHour += data.a.xp;
+                            VARIABLES.QoLStats.d.TSResourcesPerHour += data.a.hasOwnProperty('a') ? data.a.a : 0;
+                            VARIABLES.QoLStats.d.TSClanResourcesPerHour += data.a.hasOwnProperty('ca') ? data.a.ca : 0;
+                            VARIABLES.QoLStats.e.TSResourcesPerHour.removeClass('food wood iron stone').addClass(data.a.r);
+                            let token = data.a.r;
+                            token = token.charAt(0).toUpperCase() + token.substr(1) + 'XPReq';
+                            let skill = data.a.s;
+                            VARIABLES.QoLStats[token] = data.p[skill].tnl;
+                            let eta;
+                            if (data.a.xp === 0) {
+                                eta = 'never';
+                            } else {
+                                eta = (VARIABLES.QoLStats[token] - data.p[skill].xp) / data.a.xp * data.p.next_action;
+                                eta = eta.toTimeEstimate();
+                            }
+                            VARIABLES.QoLStats.e.LevelETA.text(eta);
+                        }
+                        VARIABLES.QoLStats.na = data.p.next_action;
+                        fn.helpers.updateStats('TS', data.a);
+                        fn.helpers.updateFavico(data.p.autos_remaining);
                     }
-                    let rowLastTd = m.addedNodes[0].querySelector('td:last-child');
-                    if (rowLastTd === null || rowLastTd.getAttributeNames().indexOf('data-gemid') === -1) {
-                        continue;
+                },
+                processCraft (message) {
+                    if (message.hasOwnProperty('results')) {
+                        let data = message.results;
+                        fn.helpers.togglePerHourSection('craft');
+
+                        VARIABLES.QoLStats.ct++;
+                        if (data.hasOwnProperty('a')) {
+                            VARIABLES.QoLStats.d.CTXPPerHour += data.a.xp;
+                            let token = 'CTXPReq';
+                            VARIABLES.QoLStats[token] = data.p['crafting'].tnl;
+                            let eta;
+                            if (data.a.xp === 0) {
+                                eta = 'never';
+                            } else {
+                                eta = (VARIABLES.QoLStats[token] - data.p['crafting'].xp) / data.a.xp * data.p.next_action;
+                                eta = eta.toTimeEstimate();
+                            }
+                            VARIABLES.QoLStats.e.LevelETA.text(eta);
+                        }
+                        VARIABLES.QoLStats.na = data.p.next_action;
+                        fn.helpers.updateStats('Crafting', data.a);
+                        fn.helpers.updateFavico(data.p.autos_remaining);
                     }
-                    let gemId = rowLastTd.getAttribute('data-gemid');
-                    if (!gems.hasOwnProperty(gemId)) {
-                        continue;
+                },
+                processCarve (message) {
+                    if (message.hasOwnProperty('results')) {
+                        let data = message.results;
+                        fn.helpers.togglePerHourSection('carve');
+
+                        VARIABLES.QoLStats.ca++;
+                        if (data.hasOwnProperty('a')) {
+                            VARIABLES.QoLStats.d.CAXPPerHour += data.a.xp;
+                            let token = 'CAXPReq';
+                            VARIABLES.QoLStats[token] = data.p['carving'].tnl;
+                            let eta;
+                            if (data.a.xp === 0) {
+                                eta = 'never';
+                            } else {
+                                eta = (VARIABLES.QoLStats[token] - data.p['carving'].xp) / data.a.xp * data.p.next_action;
+                                eta = eta.toTimeEstimate();
+                            }
+                            VARIABLES.QoLStats.e.LevelETA.text(eta);
+                        }
+                        VARIABLES.QoLStats.na = data.p.next_action;
+                        fn.helpers.updateStats('Carving', data.a);
+                        fn.helpers.updateFavico(data.p.autos_remaining);
                     }
-                    let gem = gems[gemId];
-                    if (gem.o === username) {
-                        continue;
+                },
+                processEventUpdate (message) {
+                    fn.helpers.togglePerHourSection('event-update');
+
+                    $('#EventTotalParticipants').text((message.attacker_count + message.harvester_count + message.crafter_count + message.carver_count).format());
+                    $('#EventBattlingParticipants').text(message.attacker_count.format());
+                    $('#EventHarvestingParticipants').text(message.harvester_count.format());
+                    $('#EventCraftingParticipants').text(message.crafter_count.format());
+                    $('#EventCarvingParticipants').text(message.carver_count.format());
+                },
+                processEventAction (message) {
+                    fn.helpers.updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true).replace(':', ''), '#ff1493');
+                },
+
+                closeHub () {
+                    $('#RQ-hub-wrapper').hide();
+                    fn.helpers.hubToggleTo();
+                },
+                hubShowSection (main, sub = null) {
+                    fn.helpers.hubToggleTo(`#RQ-hub-${main}-wrapper`);
+                    switch (main) {
+                        case 'charts':
+                            fn.__.showTrackerStatsSection(sub);
+                            break;
+
+                        case 'stats-info':
+                            fn.__.showStats();
+                            break;
                     }
+                },
 
-                    let a = document.createElement('a');
-                    a.textContent = '[Fame Own]';
-                    a.setAttribute('data-gemid', gem.i);
-                    a.setAttribute('class', 'RoAQoL-fameown-gem');
-                    rowLastTd.appendChild(document.createTextNode(' '));
-                    rowLastTd.appendChild(a);
-                }
-            });
-            o.observe(document.querySelector('table#inventoryTable'), {childList: true});
-            setTimeout(() => {
-                log('Disconnecting gem list observer');
-                o.disconnect();
-                log('Reset Gems list');
-                gems = {};
-            }, 2E3);
-        }
+                resetHourlyStats (section) {
+                    switch (section) {
+                        case 'battle':
+                            VARIABLES.QoLStats.bs = moment.tz(GAME_TIME_ZONE);
+                            VARIABLES.QoLStats.b = 0;
+                            VARIABLES.QoLStats.BattleXPPerHour = 0;
+                            VARIABLES.QoLStats.BattleGoldPerHour = 0;
+                            VARIABLES.QoLStats.BattleClanXPPerHour = 0;
+                            VARIABLES.QoLStats.BattleClanGoldPerHour = 0;
+                            break;
 
-        function _fameOwnGems (_gems) {
-            for (let gem of _gems) {
-                gems[gem.i] = gem;
-            }
-            __registerFameOwnGemTableObserver();
-        }
+                        case 'ts':
+                            VARIABLES.QoLStats.hs = moment.tz(GAME_TIME_ZONE);
+                            VARIABLES.QoLStats.h = 0;
+                            VARIABLES.QoLStats.TSXPPerHour = 0;
+                            VARIABLES.QoLStats.TSResourcesPerHour = 0;
+                            VARIABLES.QoLStats.TSClanResourcesPerHour = 0;
+                            VARIABLES.QoLStats.TSResourcesPerHour = 0;
+                            break;
 
-        function __hubToggleTo (div = null) {
-            $('#RQ-hub-sections > div').hide();
-            if (div !== null) {
-                $(div).fadeIn();
-            }
-        }
+                        case 'craft':
+                            VARIABLES.QoLStats.cts = moment.tz(GAME_TIME_ZONE);
+                            VARIABLES.QoLStats.ct = 0;
+                            VARIABLES.QoLStats.CTXPPerHour = 0;
+                            break;
 
-        function _closeHub () {
-            $('#RQ-hub-wrapper').hide();
-            __hubToggleTo();
-        }
+                        case 'carve':
+                            VARIABLES.QoLStats.cas = moment.tz(GAME_TIME_ZONE);
+                            VARIABLES.QoLStats.ca = 0;
+                            VARIABLES.QoLStats.CAXPPerHour = 0;
+                            break;
 
-        function __showChart (elem, name = '', data = []) {
-            if (data.length) {
-                new Dygraph(document.querySelector(elem), data, {
-                    labels: ['Time', name],
-                    axes: {
-                        y: {
-                            valueFormatter: val => val.format(),
-                            axisLabelFormatter: val => val.abbr(),
-                        },
-                        x: {
-                            valueFormatter: val => moment.tz(val, gameTimeZone).format('MMM Do HH:mm:ss'),
-                        },
-                    },
-                });
-            }
-        }
-
-        function __showTrackerStats (section) {
-            let stats = {d: {}};
-            let data = tracker[section];
-            let keys = Object.keys(data);
-            if (keys.length === 0) {
-                return;
-            }
-            let firstTS = keys.shift();
-            let was = data[firstTS];
-            let lastTS = firstTS;
-            let totalRes = 0;
-            for (let time in data) {
-                lastTS = time;
-                let resVal = data[time] - was;
-                if (resVal < 0) {
-                    resVal = 0;
-                }
-                totalRes += resVal;
-                was = data[time];
-                let dt = moment.tz(time, gameTimeZone);
-
-                let dayKey = `${dt.format('MMM Do')}`;
-                if (!stats.d.hasOwnProperty(dayKey)) {
-                    stats.d[dayKey] = {t: 0, ph: 0};
-                }
-                stats.d[dayKey].t += resVal;
-                stats.d[dayKey].ph = stats.d[dayKey].t / 24;
-            }
-            let summary = `${moment.tz(firstTS, gameTimeZone).format('MMM Do HH:mm')}`;
-            summary += ` - `;
-            summary += `${moment.tz(lastTS, gameTimeZone).format('MMM Do HH:mm')}`;
-            document.querySelector(`#RQ-hub-chart-${section}-subtitle`).textContent = summary;
-
-            let perDayStat = `~${(totalRes / ((moment(lastTS).valueOf() - moment(firstTS).valueOf()) / (60 * 60 * 24 * 1000))).format(3)} / day`;
-            document.querySelector(`table#RQ-hub-stats-${section} > caption`).textContent = perDayStat;
-            let resStatsTableBody = document.querySelector(`table#RQ-hub-stats-${section} > tbody`);
-            resStatsTableBody.innerHTML = '';
-            for (let date in stats.d) {
-                let stat = stats.d[date];
-                let tr = document.createElement('tr');
-
-                let td;
-
-                td = document.createElement('td');
-                td.textContent = date;
-                tr.appendChild(td);
-
-                td = document.createElement('td');
-                td.classList.add('text-right');
-                td.textContent = stat.t.format();
-                tr.appendChild(td);
-
-                td = document.createElement('td');
-                td.classList.add('text-right');
-                td.textContent = `~${stat.ph.format(3)} / h`;
-                tr.appendChild(td);
-
-                resStatsTableBody.appendChild(tr);
-            }
-        }
-
-        function _showCharts (one = null) {
-            __hubToggleTo('#RQ-hub-charts-wrapper');
-            let twoWeeksago = moment.tz(gameTimeZone).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00');
-
-            list = trackedStuffLC.concat(trackedStuffDDLC);
-            if (one !== null && list.indexOf(one) !== -1) {
-                list = [one];
-            }
-
-            for (let res of list) {
-                let resData = [];
-                for (let timestamp in tracker[res]) {
-                    if (!tracker[res].hasOwnProperty(timestamp)) {
-                        continue;
+                        default:
+                            // :)
+                            break;
                     }
-                    let rts = moment.tz(timestamp, gameTimeZone).format('YYYY-MM-DD HH:mm:ss');
-                    if (rts < twoWeeksago) {
-                        delete tracker[res][timestamp];
-                        continue;
-                    }
-                    let resValue = tracker[res][timestamp];
-                    resData.push([
-                        moment.tz(timestamp, gameTimeZone).toDate(),
-                        resValue,
-                    ]);
-                }
-                __showChart('#RQ-hub-chart-' + res, res, resData);
-                __showTrackerStats(res);
-            }
-        }
-
-        function _showStats () {
-            __hubToggleTo('#RQ-hub-stats-info-wrapper');
-
-            let currentSkill = document.querySelector('#weaponskill').textContent.split(' ')[0];
-            let statTableBody = document.querySelector('#RQ-hub-stats-avg-dmg-data tbody');
-            statTableBody.innerHTML = '<tr>\n                    <td colspan="5" class="text-center"><em>No available data</em></td>\n                </tr>';
-
-            if (!tracker.avgDmStrStat.hasOwnProperty(currentSkill)) {
-
-                return;
-            }
-            document.querySelector('#RQ-hub-chart-avh-dmg-subtitle').textContent = currentSkill;
-
-            let chartData = [];
-            let tableData = [];
-            for (let baseStr in tracker.avgDmStrStat[currentSkill]) {
-                if (!tracker.avgDmStrStat[currentSkill].hasOwnProperty(baseStr)) {
-                    continue;
-                }
-                let values = tracker.avgDmStrStat[currentSkill][baseStr];
-                chartData.push([
-                    moment.tz(values.s, gameTimeZone).toDate(),
-                    values.dmg / values.a,
-                ]);
-                tableData.push([
-                    moment.tz(values.s, gameTimeZone).format('MMM Do HH:mm'),
-                    parseInt(baseStr).format(),
-                    values.total.format(),
-                    values.dmg.format(),
-                    values.a.format(),
-                    (values.dmg / values.a).format(),
-                ]);
-            }
-
-            if (chartData.length) {
-                new Dygraph(document.querySelector('#RQ-hub-chart-avg-dmg'), chartData, {
-                    labels: ['Time', 'Average damage'],
-                    axes: {
-                        y: {
-                            valueFormatter: val => val.format(),
-                            axisLabelFormatter: val => val.abbr(),
-                        },
-                        x: {
-                            valueFormatter: val => moment.tz(val, gameTimeZone).format('MMM Do HH:mm:ss'),
-                        },
-                    },
-                });
-            }
-
-            if (tableData.length) {
-                let dt = $('#RQ-hub-stats-avg-dmg-data').DataTable();
-                dt.clear();
-                for (let item of tableData) {
-                    dt.row.add(item);
-                }
-                dt.draw();
-            }
-        }
-
-        function _showSettings () {
-            __hubToggleTo('#RQ-hub-settings-wrapper');
-        }
-
-        function _setChatDirection (dir) {
-            chatDirection = dir;
-        }
-
-        //window.onload = __setup;
-        window.addEventListener('load', __setup, {once: true});
-
-        return {
-            //proccess: _proccess,
-            processBattle: _processBattle,
-            processTS: _processTS,
-            processCraft: _processCraft,
-            processEventUpdate: _processEventUpdate,
-            processEventAction: _processEventAction,
-            processLoginInfo: _processLI,
-            processHouse: _handleHouseData,
-            updateMessageLimit: _updateMSGLimit,
-            addFameOwnGemsButton: _fameOwnGems,
-            showCharts: _showCharts,
-            closeHub: _closeHub,
-            setChatDirection: _setChatDirection,
-            showStats: _showStats,
-            showSettings: _showSettings,
+                },
+            },
         };
+
+        fn.__.init();
+
+        return fn.API;
     })(window);
 
     $(document).on('roa-ws:battle', function (e, data) {
@@ -1455,10 +1137,10 @@
     $(document).on('roa-ws:craft', function (e, data) {
         QoL.processCraft(data);
     });
-    //
-    // $(document).on('roa-ws:carve', function (e, data) {
-    //     QoL.processCarve(data);
-    // });
+
+    $(document).on('roa-ws:carve', function (e, data) {
+        QoL.processCarve(data);
+    });
 
     $(document).on('roa-ws:event_update', function (e, data) {
         QoL.processEventUpdate(data);
@@ -1473,11 +1155,11 @@
     });
 
     $(document).on('roa-ws:page:house', function (e, data) {
-        QoL.processHouse('house', data);
+        QoL.handleHouseData('house', data);
     });
 
     $(document).on('roa-ws:page:house_room', function (e, data) {
-        QoL.processHouse('room', data);
+        QoL.handleHouseData('room', data);
     });
 
     $(document).on('roa-ws:page:settings_preferences, roa-ws:page:settings_preferences_change', function (e, d) {
@@ -1486,9 +1168,9 @@
         QoL.setChatDirection(d.preferences[12] === '1' ? 'down' : 'up');
     });
 
-    /*$(document).on("roa-ws:message", function(e, data){
-        console.log(data);
-    });*/
+    // $(document).on("roa-ws:message", function(e, data){
+    //     // was thinking lightweight markdown formatting
+    // });
 
     $(document).on('keyup', '#chatMessage', function (e) {
         setTimeout(QoL.updateMessageLimit, 500, e.target);
@@ -1518,22 +1200,39 @@
     });
 
     $(document).on('click', '#RQ-hub-charts', function () {
-        QoL.showCharts();
+        QoL.hubShowSection('charts');
     });
 
     $(document).on('click', '#RQ-hub-charts-tabs a', function (e) {
         e.preventDefault();
         if ($(this).data('resname')) {
             $(this).tab('show');
-            QoL.showCharts($(this).data('resname'));
+            QoL.hubShowSection('charts', $(this).data('resname'));
         }
     });
 
     $(document).on('click', '#RQ-hub-stats', function () {
-        QoL.showStats();
+        QoL.hubShowSection('stats-info');
+
     });
 
     $(document).on('click', '#RQ-hub-settings', function () {
-        QoL.showSettings();
+        QoL.hubShowSection('settings');
+    });
+
+    $(document).on('click', '#clearBattleStats', function () {
+        QoL.resetHourlyStats('battle');
+    });
+
+    $(document).on('click', '#clearTradeskillStats', function () {
+        QoL.resetHourlyStats('ts');
+    });
+
+    $(document).on('click', '#clearCraftingStats', function () {
+        QoL.resetHourlyStats('craft');
+    });
+
+    $(document).on('click', '#clearCarvingStats', function () {
+        QoL.resetHourlyStats('carve');
     });
 })(window, jQuery);
