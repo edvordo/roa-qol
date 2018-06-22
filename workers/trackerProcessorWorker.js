@@ -1,4 +1,4 @@
-importScripts('https://beta.avabur.com/js/moment.js', 'https://beta.avabur.com/js/moment-timezone-with-data.js');
+importScripts('https://rawgit.com/edvordo/roa-qol/dev/resources/js/moment.js', 'https://rawgit.com/edvordo/roa-qol/dev/resources/js/moment-timezone-with-data.js', 'https://rawgit.com/edvordo/roa-qol/dev/common.js');
 let generalFormat = 'Do MMM';
 let captionFormat = 'Do MMM HH:mm';
 let GTZ = 'America/New_York';
@@ -21,6 +21,9 @@ onmessage = event => {
         let currentValue = data[firstTS];
         let total = 0;
         for (let ts in data) {
+            if (!data.hasOwnProperty(ts)) {
+                continue;
+            }
             lastTS = ts;
             let amount = data[ts] - currentValue;
             if (amount < 0) {
@@ -99,7 +102,7 @@ onmessage = event => {
                     d.d[timestamp],
                 ]);
             }
-            postMessage({a: 'graphData', i: d.i, d: d.d, gd: graphData});
+            postMessage({a: 'graphData', i: d.i, gd: graphData});
             postMessage({a: 'dataTableData', i: d.i, dtd: allData});
             dailyAverages(d.d, d.i);
             break;
@@ -116,7 +119,32 @@ onmessage = event => {
                 }
                 break;
             }
-            postMessage({a: 'cleanData',i: d.i, d: d.d});
+            postMessage({a: 'cleanData', i: d.i, d: d.d});
+            break;
+
+        case 'processStatAvgDamage':
+            let chartData = [];
+            let tableData = [];
+            for (let baseStr in d.d) {
+                if (!d.d.hasOwnProperty(baseStr)) {
+                    continue;
+                }
+                let values = d.d[baseStr];
+                chartData.push([
+                    moment.tz(values.s, GTZ).toDate(),
+                    values.dmg / values.a,
+                ]);
+                tableData.push([
+                    moment.tz(values.s, GTZ).format(captionFormat),
+                    parseInt(baseStr),
+                    values.total,
+                    values.dmg,
+                    values.a,
+                    values.dmg / values.a,
+                ]);
+            }
+            postMessage({a: 'statADGraphData',sn:d.cs,cd:chartData});
+            postMessage({a: 'statADTableData',sn:d.cs,td:tableData});
             break;
     }
 

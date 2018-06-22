@@ -1,0 +1,11 @@
+{
+  "devel": true,
+  "globals": {
+    "GM": {
+      "info": true
+    },
+    "GM_addStyle": true,
+    "GM_getResourceText": true
+  },
+  "strict": false
+}
