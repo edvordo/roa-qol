@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.0.0-rc1
+// @version      2.0.0-rc2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @match        https://*.avabur.com/game*
@@ -10,10 +10,11 @@
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/dev/workers/trackerSaveWorker.js
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/dev/workers/trackerProcessorWorker.js
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/dev/resources/templates/header.html
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
+// @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
 // @require      https://rawgit.com/edvordo/roa-qol/dev/common.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
@@ -41,7 +42,39 @@
 
         const INTERNAL_UPDATE_URI = 'https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js';
 
+
+
         const TRACKER_SAVE_KEY = 'QoLTracker';
+
+        const DEFAULT_SETTINGS = {
+            badge_stamina: true,
+            badge_fatigue: true,
+            badge_event: true,
+            house_tooltips: true,
+            event_abbreviation: true,
+            char_count: true,
+            command_helper: true,
+            tracker: {
+                fame: true,
+                crystals: true,
+                platinum: true,
+                gold: true,
+                food: true,
+                wood: true,
+                iron: true,
+                stone: true,
+                mats: true,
+                frags: true,
+                strength: true,
+                health: true,
+                coordination: true,
+                agility: true,
+                average_damage: true,
+                captcha: true,
+            }
+        };
+
+        const SETTINGS_SAVE_KEY = 'QolSettings';
 
         const WORKERS = {};
 
@@ -51,6 +84,8 @@
             chatDirection: 'up',
             checkForUpdateTimer: 6 * 60 * 60 * 1000, // 6 hours
             gems: {},
+
+            settings: DEFAULT_SETTINGS,
 
             QoLStats: {
                 e: {}, // elements
@@ -284,7 +319,7 @@
                                 continue;
                             }
                             let gem = VARIABLES.gems[gemId];
-                            if (gem.o === username) {
+                            if (gem.o === VARIABLES.username) {
                                 continue;
                             }
 
@@ -539,6 +574,22 @@
 
                     // chat limiter
                     document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', '0 / 400');
+                    document.querySelector('#chatMessageWrapper').classList.add('row');
+
+                    document.querySelector('#channelWrapper').classList.remove('dib');
+                    document.querySelector('#channelWrapper').classList.add(...'col-xs-3 col-sm-2 col-md-3 col-lg-2'.split(' '));
+
+                    document.querySelector('#chatMessage').classList.remove('dib');
+                    document.querySelector('#chatMessage').classList.add(...'col-xs-7 col-sm-8 col-md-7 col-lg-9'.split(' '));
+
+                    let chatSendWrapper = document.createElement('div');
+                    chatSendWrapper.classList.add(...'col-xs-2 col-sm-2 col-md-2 col-lg-1'.split(' '));
+                    document.querySelector('#chatMessageWrapper').appendChild(chatSendWrapper);
+
+                    let chatSendButton = document.querySelector('#chatSendMessage');
+                    chatSendButton.classList.add('btn-block');
+                    chatSendWrapper.append(chatSendButton);
+
                 },
                 setupTemplates () {
                     let chartsContentTmpl = '';
@@ -590,7 +641,7 @@
     <hr>
     <div id="RQ-hub-sections">
         <div id="RQ-hub-settings-wrapper" style="display: none;">
-            <em>Yea .. at some point, sure .. not for now tho' :)</em>
+            ${GM_getResourceText('QoLSettingsHTML')}
         </div>
         <div id="RQ-hub-charts-wrapper" style="display: none;">
             <ul class="nav nav-tabs" id="RQ-hub-charts-tabs">${chartsTabsTmpl}</ul>
@@ -678,8 +729,25 @@
                     VARIABLES.QoLStats.CarvXPReq = player.carving.tnl;
                 },
 
+                loadSettings() {
+                    let settings = localStorage.getItem(SETTINGS_SAVE_KEY);
+                    if (null === settings) {
+                        return ;
+                    }
+                    try {
+                        settings = JSON.parse(settings);
+
+                        VARIABLES.settings = _.defaultsDeep(settings, DEFAULT_SETTINGS);
+                    } catch (e) {
+                        log('Failed to parse settings ..');
+                    }
+                },
+                saveSettings() {
+                    localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify(VARIABLES.settings));
+                },
+
                 registerFameOwnGemTableObserver () {
-                    OBSERVERS.general.fameOwnGemsObserver.observe(document.querySelector('table#inventoryTable'), {childList: true});
+                    OBSERVERS.general.fameOwnGemsObserver.observe(document.querySelector('table#inventoryOtherTable'), {childList: true});
                     setTimeout(() => {
                         log('Disconnecting gem list observer');
                         OBSERVERS.general.fameOwnGemsObserver.disconnect();
@@ -821,7 +889,7 @@
                     }
                 },
                 cleanUpTracker () {
-                    for (section in VARIABLES.tracker) {
+                    for (let section in VARIABLES.tracker) {
                         if (section === 'avgDmStrStat') {
                             continue;
                         }
@@ -960,8 +1028,6 @@
                                     eta = 'never';
                                 } else {
                                     eta = (VARIABLES.QoLStats.PlXPReq - data.p.currentXP) / data.b.xp * data.p.next_action;
-                                    console.log(eta);
-                                    console.log(eta.toTimeEstimate());
                                     eta = eta.toTimeEstimate();
                                 }
                                 VARIABLES.QoLStats.e.LevelETA.text(eta);

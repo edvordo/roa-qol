@@ -7,13 +7,13 @@
                 <h6 class="text-center">Browser tab badge</h6>
             </div>
             <label class="col-xs-6">
-                <input type="checkbox" name="settings[badge_stamina]"> Show stamina remaining
+                <input type="checkbox" name="settings" data-key="badge_stamina"> Show stamina remaining
             </label>
             <label class="col-xs-6">
-                <input type="checkbox" name="settings[badge_fatigue]"> Show fatigue actions count
+                <input type="checkbox" name="settings" data-key="badge_fatigue"> Show fatigue actions count
             </label>
             <label class="col-xs-6">
-                <input type="checkbox" name="settings[badge_event]"> Show event time remaining
+                <input type="checkbox" name="settings" data-key="badge_event"> Show event time remaining
             </label>
         </div>
         <div class="row">
@@ -21,7 +21,7 @@
                 <h6 class="text-center">House</h6>
             </div>
             <label class="col-xs-12">
-                <input type="checkbox" name="settings[house_tooltips]"> Add house items tooltips
+                <input type="checkbox" name="settings" data-key="house_tooltips"> Add house items tooltips
             </label>
         </div>
         <div class="row">
@@ -29,7 +29,7 @@
                 <h6 class="text-center">Event</h6>
             </div>
             <label class="col-xs-12">
-                <input type="checkbox" name="settings[event_abbreviation]"> Abbreviate event update messages
+                <input type="checkbox" name="settings" data-key="event_abbreviation"> Abbreviate event update messages
             </label>
         </div>
         <div class="row">
@@ -37,32 +37,30 @@
                 <h6 class="text-center">Chat</h6>
             </div>
             <label class="col-xs-12">
-                <input type="checkbox" name="settings[char_count]"> Add character count next to message input
+                <input type="checkbox" name="settings" data-key="char_count"> Add character count next to message input
             </label>
             <label class="col-xs-12">
-                <input type="checkbox" name="settings[command_helper]" disabled> Add command helper
+                <input type="checkbox" name="settings" data-key="command_helper" disabled> Add command helper
             </label>
         </div>
     </div>
     <div class="col-md-6">
-        <h5 class="text-center">Tracker<br>
-            <small>track changes to</small>
-        </h5>
+        <h5 class="text-center">Tracker</h5>
         <div class="row">
             <div class="col-xs-12">
                 <h6 class="text-center">Account</h6>
             </div>
             <label class="col-md-6">
-                <input type="checkbox" name="settings[tracker][fame]" disabled> Fame
+                <input type="checkbox" name="settings" data-key="tracker-fame" disabled> Fame
             </label>
             <label class="col-md-6 crystals">
-                <input type="checkbox" name="settings[tracker][crystals]" disabled> Crystals
+                <input type="checkbox" name="settings" data-key="tracker-crystals" disabled> Crystals
             </label>
             <label class="col-md-6 platinum">
-                <input type="checkbox" name="settings[tracker][platinum]"> Platinum
+                <input type="checkbox" name="settings" data-key="tracker-platinum"> Platinum
             </label>
             <label class="col-md-6 gold">
-                <input type="checkbox" name="settings[tracker][gold]"> Gold
+                <input type="checkbox" name="settings" data-key="tracker-gold"> Gold
             </label>
         </div>
         <div class="row">
@@ -70,22 +68,22 @@
                 <h6 class="text-center">Resources</h6>
             </div>
             <label class="col-md-6 food">
-                <input type="checkbox" name="settings[tracker][food]"> Food
+                <input type="checkbox" name="settings" data-key="tracker-food"> Food
             </label>
             <label class="col-md-6 wood">
-                <input type="checkbox" name="settings[tracker][wood]"> Wood
+                <input type="checkbox" name="settings" data-key="tracker-wood"> Wood
             </label>
             <label class="col-md-6 iron">
-                <input type="checkbox" name="settings[tracker][iron]"> Iron
+                <input type="checkbox" name="settings" data-key="tracker-iron"> Iron
             </label>
             <label class="col-md-6 stone">
-                <input type="checkbox" name="settings[tracker][stone]"> Stone
+                <input type="checkbox" name="settings" data-key="tracker-stone"> Stone
             </label>
             <label class="col-md-6 crafting">
-                <input type="checkbox" name="settings[tracker][mats]"> Mats
+                <input type="checkbox" name="settings" data-key="tracker-mats"> Mats
             </label>
             <label class="col-md-6 carving">
-                <input type="checkbox" name="settings[tracker][frafs]"> Frags
+                <input type="checkbox" name="settings" data-key="tracker-frags"> Frags
             </label>
         </div>
         <div class="row">
@@ -93,16 +91,16 @@
                 <h6 class="text-center">Base stats</h6>
             </div>
             <label class="col-md-6 ruby">
-                <input type="checkbox" name="settings[tracker][strength]"> Strength
+                <input type="checkbox" name="settings" data-key="tracker-strength"> Strength
             </label>
             <label class="col-md-6 opal">
-                <input type="checkbox" name="settings[tracker][health]"> Health
+                <input type="checkbox" name="settings" data-key="tracker-health"> Health
             </label>
             <label class="col-md-6 sapphire">
-                <input type="checkbox" name="settings[tracker][coordination]"> Coordination
+                <input type="checkbox" name="settings" data-key="tracker-coordination"> Coordination
             </label>
             <label class="col-md-6 emerald">
-                <input type="checkbox" name="settings[tracker][agility]"> Agility
+                <input type="checkbox" name="settings" data-key="tracker-agility"> Agility
             </label>
         </div>
         <div class="row">
@@ -110,10 +108,10 @@
                 <h6 class="text-center">General</h6>
             </div>
             <label class="col-md-12">
-                <input type="checkbox" name="settings[tracker][average_damage]"> Average damage vs. Strength
+                <input type="checkbox" name="settings" data-key="tracker-average_damage"> Average damage vs. Strength
             </label>
             <label class="col-md-12">
-                <input type="checkbox" name="settings[tracker][captcha]"> Captcha rewards
+                <input type="checkbox" name="settings" data-key="tracker-captcha"> Captcha rewards
             </label>
         </div>
     </div>
