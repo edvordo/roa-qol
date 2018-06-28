@@ -574,21 +574,21 @@
 
                     // chat limiter
                     document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', '0 / 400');
-                    document.querySelector('#chatMessageWrapper').classList.add('row');
-
-                    document.querySelector('#channelWrapper').classList.remove('dib');
-                    document.querySelector('#channelWrapper').classList.add(...'col-xs-3 col-sm-2 col-md-3 col-lg-2'.split(' '));
-
-                    document.querySelector('#chatMessage').classList.remove('dib');
-                    document.querySelector('#chatMessage').classList.add(...'col-xs-7 col-sm-8 col-md-7 col-lg-9'.split(' '));
-
-                    let chatSendWrapper = document.createElement('div');
-                    chatSendWrapper.classList.add(...'col-xs-2 col-sm-2 col-md-2 col-lg-1'.split(' '));
-                    document.querySelector('#chatMessageWrapper').appendChild(chatSendWrapper);
-
-                    let chatSendButton = document.querySelector('#chatSendMessage');
-                    chatSendButton.classList.add('btn-block');
-                    chatSendWrapper.append(chatSendButton);
+                    // document.querySelector('#chatMessageWrapper').classList.add('row');
+                    //
+                    // document.querySelector('#channelWrapper').classList.remove('dib');
+                    // document.querySelector('#channelWrapper').classList.add(...'col-xs-3 col-sm-2 col-md-3 col-lg-2'.split(' '));
+                    //
+                    // document.querySelector('#chatMessage').classList.remove('dib');
+                    // document.querySelector('#chatMessage').classList.add(...'col-xs-7 col-sm-8 col-md-7 col-lg-9'.split(' '));
+                    //
+                    // let chatSendWrapper = document.createElement('div');
+                    // chatSendWrapper.classList.add(...'col-xs-2 col-sm-2 col-md-2 col-lg-1'.split(' '));
+                    // document.querySelector('#chatMessageWrapper').appendChild(chatSendWrapper);
+                    //
+                    // let chatSendButton = document.querySelector('#chatSendMessage');
+                    // chatSendButton.classList.add('btn-block');
+                    // chatSendWrapper.append(chatSendButton);
 
                 },
                 setupTemplates () {
