@@ -99,6 +99,10 @@ if (typeof Number.prototype.abbr !== 'function') {
     };
 }
 
+if (typeof isIterable === 'undefined') {
+    const isIterable = obj => obj !== null && typeof obj[Symbol.iterator] === 'function';
+}
+
 function log (message) {
     console.log(`[${moment().format('Do MMM Y HH:mm:ss')}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
 }
