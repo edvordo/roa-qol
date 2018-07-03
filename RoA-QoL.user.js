@@ -4,19 +4,19 @@
 // @version      2.0.0-rc3
 // @description  try to take over the world!
 // @author       Reltorakii
-// @icon         https://rawgit.com/edvordo/roa-qol/dev/resources/img/logo-32.png
+// @icon         https://rawgit.com/edvordo/roa-qol/dev/resources/img/logo-32.png?rev=180703
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css
-// @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/dev/workers/trackerSaveWorker.js
-// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/dev/workers/trackerProcessorWorker.js
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css?rev=180703
+// @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/dev/workers/trackerSaveWorker.js?rev=180703
+// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/dev/workers/trackerProcessorWorker.js?rev=180703
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/dev/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=180703
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
 // @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
-// @require      https://rawgit.com/edvordo/roa-qol/dev/common.js?rev=180702
+// @require      https://rawgit.com/edvordo/roa-qol/dev/common.js?rev=180703
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
