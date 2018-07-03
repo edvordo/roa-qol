@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.0.0-rc2
+// @version      2.0.0-rc3
 // @description  try to take over the world!
 // @author       Reltorakii
+// @icon         https://rawgit.com/edvordo/roa-qol/dev/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css
@@ -15,7 +16,7 @@
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
 // @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
-// @require      https://rawgit.com/edvordo/roa-qol/dev/common.js
+// @require      https://rawgit.com/edvordo/roa-qol/dev/common.js?rev=180702
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
@@ -42,18 +43,17 @@
 
         const INTERNAL_UPDATE_URI = 'https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js';
 
-
-
         const TRACKER_SAVE_KEY = 'QoLTracker';
 
         const DEFAULT_SETTINGS = {
-            badge_stamina: true,
-            badge_fatigue: true,
-            badge_event: true,
-            house_tooltips: true,
-            event_abbreviation: true,
-            char_count: true,
-            command_helper: true,
+            badge_stamina: true, // ok
+            badge_fatigue: true, // ok
+            badge_event: true, // ok
+            house_tooltips: true, // ok
+            event_abbreviation: true, // ok
+            char_count: true, // ok
+            command_helper: false,
+            fame_own_gems: true, // ok
             tracker: {
                 fame: true,
                 crystals: true,
@@ -70,8 +70,8 @@
                 coordination: true,
                 agility: true,
                 average_damage: true,
-                captcha: true,
-            }
+                captcha: false,
+            },
         };
 
         const SETTINGS_SAVE_KEY = 'QolSettings';
@@ -109,6 +109,8 @@
             },
 
             tracker: {
+                fame: {},
+                crystals: {},
                 platinum: {},
                 gold: {},
                 mats: {},
@@ -124,7 +126,7 @@
                 avgDmStrStat: {},
             },
             tracked: {
-                stuff: ['Platinum', 'Gold', 'Mats', 'Frags', 'Food', 'Wood', 'Iron', 'Stone'],
+                stuff: ['Fame', 'Crystals', 'Platinum', 'Gold', 'Mats', 'Frags', 'Food', 'Wood', 'Iron', 'Stone'],
                 stuffDD: ['Strength', 'Health', 'Coordination', 'Agility'],
                 stuffLC: [],
                 stuffDDLC: [],
@@ -433,6 +435,39 @@
 
                     }
                 },
+                toggleSetting (key, set = false) {
+                    if (typeof set === 'boolean') {
+                        let element = document.querySelector(`.qol-setting[data-key="${key}"]`);
+                        if (element && element.type === 'checkbox') {
+                            element.checked = set;
+                        }
+                    }
+                },
+                populateToSettingsTemplate () {
+                    for (let key in VARIABLES.settings) {
+                        if (!VARIABLES.settings.hasOwnProperty(key)) {
+                            continue;
+                        }
+                        let value = VARIABLES.settings[key];
+                        if (typeof value === 'boolean') {
+                            fn.helpers.toggleSetting(key, value, false);
+                            continue;
+                        }
+
+                        if (true === _.isPlainObject(value)) {
+                            for (let key2 in value) {
+                                if (!value.hasOwnProperty(key2)) {
+                                    continue;
+                                }
+                                let value2 = value[key2];
+                                if (typeof value2 === 'boolean') {
+                                    fn.helpers.toggleSetting(`${key}-${key2}`, value2, false);
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
             },
             /** private / internal / helper methods */
             __: {
@@ -456,6 +491,10 @@
                                 setInterval(fn.__.checkForUpdate, VARIABLES.checkForUpdateTimer);
                             }
                         });
+                },
+
+                resetFavico() {
+                    VARIABLES.FI.badge(0);
                 },
 
                 setupWorkers () {
@@ -543,6 +582,8 @@
                     WORKERS.trackerSaveWorker.postMessage({a: 'setGTZ', gtz: GAME_TIME_ZONE});
                 },
                 setupObservers () {
+                    OBSERVERS.toggleable.fame = fn.helpers.initObserver('fame', 'title', 'td#fame_points');
+                    OBSERVERS.toggleable.crystals = fn.helpers.initObserver('crystals', 'title', 'td.crystals');
                     OBSERVERS.toggleable.platinum = fn.helpers.initObserver('platinum', 'title', 'td.myplatinum');
                     OBSERVERS.toggleable.gold = fn.helpers.initObserver('gold', 'title', 'td.mygold');
                     OBSERVERS.toggleable.mats = fn.helpers.initObserver('mats', 'title', 'td.mycrafting_materials');
@@ -562,7 +603,7 @@
                     GM_addStyle(GM_getResourceText('QoLCSS'));
                 },
                 setupHTML () {
-                    // pet hour table
+                    // per hour table
                     let td = document.createElement('td');
                     td.insertAdjacentHTML('afterbegin', TEMPLATES.headerHTML);
                     document.querySelector('#allThemTables > tbody > tr').appendChild(td);
@@ -571,24 +612,6 @@
                     document.querySelector('#modalContent').insertAdjacentHTML('beforeend', TEMPLATES.hubHTML);
                     $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
                     $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false});
-
-                    // chat limiter
-                    document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', '0 / 400');
-                    // document.querySelector('#chatMessageWrapper').classList.add('row');
-                    //
-                    // document.querySelector('#channelWrapper').classList.remove('dib');
-                    // document.querySelector('#channelWrapper').classList.add(...'col-xs-3 col-sm-2 col-md-3 col-lg-2'.split(' '));
-                    //
-                    // document.querySelector('#chatMessage').classList.remove('dib');
-                    // document.querySelector('#chatMessage').classList.add(...'col-xs-7 col-sm-8 col-md-7 col-lg-9'.split(' '));
-                    //
-                    // let chatSendWrapper = document.createElement('div');
-                    // chatSendWrapper.classList.add(...'col-xs-2 col-sm-2 col-md-2 col-lg-1'.split(' '));
-                    // document.querySelector('#chatMessageWrapper').appendChild(chatSendWrapper);
-                    //
-                    // let chatSendButton = document.querySelector('#chatSendMessage');
-                    // chatSendButton.classList.add('btn-block');
-                    // chatSendWrapper.append(chatSendButton);
 
                 },
                 setupTemplates () {
@@ -674,7 +697,8 @@
                 setupLoops () {
                     setInterval(fn.__.saveTracker, 6E4); // once a minute ..
                     setTimeout(fn.__.checkForUpdate, 6 * 60 * 60 * 1000); // every 6 hours ?
-                    setInterval(fn.__.cleanUpTracker, 1 * 60 * 1000); // every hour
+                    setInterval(fn.__.cleanUpTracker, 60 * 60 * 1000); // every hour
+                    setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
                 },
                 setupVariables () {
                     // per hour
@@ -729,11 +753,12 @@
                     VARIABLES.QoLStats.CarvXPReq = player.carving.tnl;
                 },
 
-                loadSettings() {
+                saveSettings () {
+                    localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify(VARIABLES.settings));
+                },
+                loadSettings () {
                     let settings = localStorage.getItem(SETTINGS_SAVE_KEY);
-                    if (null === settings) {
-                        return ;
-                    }
+
                     try {
                         settings = JSON.parse(settings);
 
@@ -741,9 +766,70 @@
                     } catch (e) {
                         log('Failed to parse settings ..');
                     }
+                    console.log(settings);
+                    fn.helpers.populateToSettingsTemplate();
+                    fn.__.saveSettings();
+                    fn.__.applySettings();
                 },
-                saveSettings() {
-                    localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify(VARIABLES.settings));
+                applySettings() {
+                    // tracked stuff from fame to stats, except average damage vs. strength
+                    for (let item of VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC)) {
+                        if (!OBSERVERS.toggleable.hasOwnProperty(item)) {
+                            continue;
+                        }
+                        if (!VARIABLES.settings.tracker.hasOwnProperty(item)) {
+                            continue;
+                        }
+                        let tab = document.querySelector(`[data-resname="${item}"]`);
+                        tab.classList.add('hidden');
+                        OBSERVERS.toggleable[item].disconnect();
+                        if (VARIABLES.settings.tracker[item]) {
+                            OBSERVERS.toggleable[item].restart();
+                            tab.classList.remove('hidden');
+                        }
+                    }
+
+                    let tab = document.querySelector(`#RQ-hub-stats`);
+                    tab.classList.add('hidden');
+                    if (VARIABLES.settings.tracker.average_damage) {
+                        tab.classList.remove('hidden');
+                    }
+
+                    // event abbreviator
+                    OBSERVERS.toggleable.eventAppreviator.disconnect();
+                    if (VARIABLES.settings.event_abbreviation) {
+                        OBSERVERS.toggleable.eventAppreviator.restart();
+                    }
+
+                    // chat limiter
+                    document.querySelector('#chatMessageWrapper').removeAttribute('data-limiter');
+                    if (VARIABLES.settings.char_count) {
+                        document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', '0 / 400');
+                    }
+
+                },
+                processSettingChange(element, ...hierarchy) {
+                    console.log(element);
+                    console.log(hierarchy);
+                    if (1 === hierarchy.length) {
+                        let setting = hierarchy.pop();
+                        if (!VARIABLES.settings.hasOwnProperty(setting)) {
+                            return false;
+                        }
+                        if (element.type === 'checkbox') {
+                            VARIABLES.settings[setting] = !!element.checked;
+                        }
+                    } else if (hierarchy.length === 2) {
+                        let [top, sub] = hierarchy;
+                        if (!VARIABLES.settings.hasOwnProperty(top) || !VARIABLES.settings[top].hasOwnProperty(sub)) {
+                            return false;
+                        }
+                        if (element.type === 'checkbox') {
+                            VARIABLES.settings[top][sub] = !!element.checked;
+                        }
+                    }
+                    fn.__.applySettings();
+                    fn.__.saveSettings();
                 },
 
                 registerFameOwnGemTableObserver () {
@@ -798,6 +884,10 @@
                 },
 
                 logAvgDmg (battle) {
+                    if (!VARIABLES.settings.tracker.average_damage) {
+                        return;
+                    }
+
                     if (battle.b.r === 0) {
                         return;
                     }
@@ -957,9 +1047,10 @@
                         'Setting up HTML ..': fn.__.setupHTML,
                         'Setting up variables ..': fn.__.setupVariables,
                         'Setting up observers ..': fn.__.setupObservers,
+                        'Loading settings ..': fn.__.loadSettings,
                         'Starting loops ..': fn.__.setupLoops,
-                        'Loading tracker info': fn.__.loadTracker,
-                        'Loading house info': fn.__.loadHouseInfo,
+                        'Loading tracker info ..': fn.__.loadTracker,
+                        'Loading house info ..': fn.__.loadHouseInfo,
                     };
                 },
 
@@ -978,6 +1069,9 @@
             /** public QoL object methods */
             API: {
                 addFameOwnGemsButton (gems) {
+                    if (!VARIABLES.settings.fame_own_gems) {
+                        return;
+                    }
                     for (let gem of gems) {
                         VARIABLES.gems[gem.i] = gem;
                     }
@@ -985,6 +1079,9 @@
                 },
 
                 handleHouseData (type, data) {
+                    if (!VARIABLES.settings.house_tooltips) {
+                        return;
+                    }
                     if (type === 'house') {
                         fn.__.updateRooms(data.rooms);
                     } else if (type === 'room') {
@@ -997,8 +1094,11 @@
                     VARIABLES.chatDirection = dir;
                 },
                 updateMessageLimit (msgBox) {
+                    if (!VARIABLES.settings.char_count) {
+                        return;
+                    }
                     let lng = $(msgBox).text().replace(/\/(w [^\s]+ |r |re |me |m |h |c |t |a |wire.*)/i, '').length;
-                    $('#chatMessageWrapper').attr('data-limiter', `${lng} / 400`);
+                    document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', `${lng} / 400`);
                 },
 
                 processLoginInfo (data) {
@@ -1008,6 +1108,9 @@
                             fn.API.setChatDirection(data.p.chatScroll);
                         }
                     }
+                },
+                changeSetting(setting, element) {
+                    fn.__.processSettingChange(element, ...setting.split('-'));
                 },
 
                 processBattle (message) {
@@ -1037,7 +1140,12 @@
                         VARIABLES.QoLStats.na = data.p.next_action;
 
                         fn.helpers.updateStats('battle', data.b);
-                        fn.helpers.updateFavico(data.p.autos_remaining);
+                        if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
+                        if (data.p.autos_remaining < 0 && VARIABLES.settings.badge_fatigue) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
                     }
                 },
                 processTS (message) {
@@ -1066,7 +1174,12 @@
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
                         fn.helpers.updateStats('TS', data.a);
-                        fn.helpers.updateFavico(data.p.autos_remaining);
+                        if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
+                        if (data.p.autos_remaining < 0 && VARIABLES.settings.badge_fatigue) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
                     }
                 },
                 processCraft (message) {
@@ -1090,7 +1203,12 @@
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
                         fn.helpers.updateStats('Crafting', data.a);
-                        fn.helpers.updateFavico(data.p.autos_remaining);
+                        if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
+                        if (data.p.autos_remaining < 0 && VARIABLES.settings.badge_fatigue) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
                     }
                 },
                 processCarve (message) {
@@ -1114,7 +1232,12 @@
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
                         fn.helpers.updateStats('Carving', data.a);
-                        fn.helpers.updateFavico(data.p.autos_remaining);
+                        if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
+                        if (data.p.autos_remaining < 0 && VARIABLES.settings.badge_fatigue) {
+                            fn.helpers.updateFavico(data.p.autos_remaining);
+                        }
                     }
                 },
                 processEventUpdate (message) {
@@ -1127,7 +1250,9 @@
                     $('#EventCarvingParticipants').text(message.carver_count.format());
                 },
                 processEventAction (message) {
-                    fn.helpers.updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true).replace(':', ''), '#ff1493');
+                    if (VARIABLES.settings.badge_event) {
+                        fn.helpers.updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true).replace(':', ''), '#ff1493');
+                    }
                 },
 
                 closeHub () {
@@ -1300,5 +1425,9 @@
 
     $(document).on('click', '#clearCarvingStats', function () {
         QoL.resetHourlyStats('carve');
+    });
+
+    $(document).on('change', '.qol-setting', function() {
+        QoL.changeSetting(this.getAttribute('data-key'), this);
     });
 })(window, jQuery);
