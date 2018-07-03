@@ -766,7 +766,6 @@
                     } catch (e) {
                         log('Failed to parse settings ..');
                     }
-                    console.log(settings);
                     fn.helpers.populateToSettingsTemplate();
                     fn.__.saveSettings();
                     fn.__.applySettings();
@@ -809,8 +808,6 @@
 
                 },
                 processSettingChange(element, ...hierarchy) {
-                    console.log(element);
-                    console.log(hierarchy);
                     if (1 === hierarchy.length) {
                         let setting = hierarchy.pop();
                         if (!VARIABLES.settings.hasOwnProperty(setting)) {
