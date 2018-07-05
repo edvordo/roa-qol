@@ -67,3 +67,16 @@ div#RQ-hub-wrapper table.rq-styled,
 div#RQ-hub-wrapper table.rq-styled * {
     border-color: var(--border-color);
 }
+
+#RQ-dashboard-localstorage-state button.btn {
+    text-align: left;
+    clear: both;
+}
+
+#RQ-dashboard-localstorage-state button.btn span.badge {
+    float: right;
+}
+
+#RQ-dashboard-localstorage-state {
+    width: 100%;
+}
