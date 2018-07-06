@@ -92,7 +92,23 @@ div#RQ-hub-wrapper table.rq-styled * {
 
 #RQ-dashboard-update-log details[open] summary {
     font-style: italic;
-    height: 14px;
+    height: 20px;
     overflow-y: hidden;
     color: #777;
+}
+
+a.qol-update-ready {
+    position: relative;
+}
+
+a.qol-update-ready:after {
+    content: "";
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: #f00;
+    position: absolute;
+    top: -2px;
+    right: -9px;
+    border-radius: 3px;
 }

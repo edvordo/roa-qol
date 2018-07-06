@@ -1,22 +1,23 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.0.0-rc3
+// @version      2.0.0
 // @description  try to take over the world!
 // @author       Reltorakii
-// @icon         https://rawgit.com/edvordo/roa-qol/dev/resources/img/logo-32.png?rev=180703
+// @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css?rev=180703
-// @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/dev/workers/trackerSaveWorker.js?rev=180703
-// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/dev/workers/trackerProcessorWorker.js?rev=180703
-// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/dev/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=180703
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180707
+// @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
+// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180707
+// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.180707
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180707
+// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180707
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
 // @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
-// @require      https://rawgit.com/edvordo/roa-qol/dev/common.js?rev=180703
+// @require      https://cdn.rawgit.com/markdown-it/markdown-it/8.4.1/dist/markdown-it.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
@@ -46,14 +47,16 @@
         const TRACKER_SAVE_KEY = 'QoLTracker';
 
         const DEFAULT_SETTINGS = {
-            badge_stamina: true, // ok
-            badge_fatigue: true, // ok
-            badge_event: true, // ok
-            house_tooltips: true, // ok
-            event_abbreviation: true, // ok
-            char_count: true, // ok
+            badge_stamina: true,
+            badge_fatigue: true,
+            badge_event: true,
+            house_tooltips: true,
+            event_abbreviation: true,
+            char_count: true,
             command_helper: false,
-            fame_own_gems: true, // ok
+            fame_own_gems: true,
+            event_ratio_message: true,
+            event_ratio_chat_prepare: true,
             tracker: {
                 fame: true,
                 crystals: true,
@@ -84,6 +87,8 @@
             chatDirection: 'up',
             checkForUpdateTimer: 6 * 60 * 60 * 1000, // 6 hours
             gems: {},
+
+            eventRewardsRegex: /([0-9,]+) Event Points? and ([0-9,]+) Platinum/,
 
             settings: DEFAULT_SETTINGS,
 
@@ -140,17 +145,18 @@
                 tab: '',
                 subtab: 'platinum',
             },
-            twoWeeksago: moment.tz(GAME_TIME_ZONE).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00'),
+            twoWeeksAgo: moment.tz(GAME_TIME_ZONE).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00'),
         };
 
         const TEMPLATES = {
             headerHTML: GM_getResourceText('QoLHeaderHTML'),
             hubHTML: '',
+            dashboardHTML: ``,
         };
 
         const OBSERVERS = {
             toggleable: {
-                eventAppreviator () {
+                eventAbbreviator () {
                     let regexes = {
                         attack: /You .+ (Bow|Sword|Staff|fists).+([0-9]+ times? hitting [0-9]+ times?), dealing .+ damage.$/i,
                         // You cast 1 spell at [Vermin] Boss Forty-two, dealing 2,127,514,765 damage.
@@ -158,8 +164,8 @@
                         summary: /([0-9,]+ adventurers? (have|has) ([^\s]+)(, dealing)? [0-9,]+)/g,
                         heal: /You healed [0-9,]+ HP!$/i,
                         counter: /You counter .+ ([0-9,]+ times?).+ dealing .* damage.$/i,
-                        bosshit: /^\[.+\] Boss .+ dealing [0-9,]+ damage\.$/,
-                        bossmiss: /^\[.+\] Boss .+ but misses!$/i,
+                        bosshit: /^\[.+] Boss .+ dealing [0-9,]+ damage\.$/,
+                        bossmiss: /^\[.+] Boss .+ but misses!$/i,
                         res: /^You found ([0-9,]+) ([a-z]+)\.$/i,
                         craft: /^You smashed down .* Hammer ([0-9,]+) times\. .* (\+[0-9,.%]+ [a-z\s]+) to the item\.$/i,
                         craft_sub: /(\+[0-9,.%]+ [a-z\s]+)/ig,
@@ -467,12 +473,21 @@
                             }
                         }
                     }
-                }
+                },
+                addMessageToChat (message) {
+                    if (VARIABLES.chatDirection === 'up') {
+                        $('#chatMessageList').prepend(message);
+                    } else {
+                        $('#chatMessageList').append(message);
+                        fn.helpers.scrollToBottom('#chatMessageListWrapper');
+                    }
+                },
             },
             /** private / internal / helper methods */
             __: {
                 checkForUpdate () {
                     let version = '';
+                    document.querySelector('#RQ-dashboard-update-last').textContent = moment.tz(GAME_TIME_ZONE).format('Do MMM HH:mm:ss');
                     fetch(INTERNAL_UPDATE_URI)
                         .then(response => response.json())
                         .then(data => {
@@ -481,19 +496,46 @@
 
                             if (compareVersions(GM_info.script.version, version) < 0) {
                                 let message = `<li>[${moment.tz(GAME_TIME_ZONE).format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
-                                if (VARIABLES.chatDirection === 'up') {
-                                    $('#chatMessageList').prepend(message);
-                                } else {
-                                    $('#chatMessageList').append(message);
-                                    fn.helpers.scrollToBottom('#chatMessageListWrapper');
-                                }
+                                document.querySelector('#RoA-QoL-open-hub').classList.add('qol-update-ready');
                             } else {
                                 setInterval(fn.__.checkForUpdate, VARIABLES.checkForUpdateTimer);
                             }
                         });
                 },
+                getUpdateLog () {
+                    let container = document.getElementById('RQ-dashboard-update-log');
+                    container.innerHTML = '';
 
-                resetFavico() {
+                    let detailsTemplate = document.createElement('details');
+                    let summaryTemplate = document.createElement('summary');
+                    let dateTemplate = document.createElement('div');
+                    dateTemplate.classList.add('text-right');
+                    dateTemplate.classList.add('text-muted');
+                    fetch('https://api.github.com/repos/edvordo/roa-qol/releases')
+                        .then(response => response.json())
+                        .then(releases => {
+                            for (let release of releases) {
+                                // release.name, release.body, new Date(release.published_at), release.html_url;
+                                let lines = release.body.split(/\n/);
+                                let detail = detailsTemplate.cloneNode();
+                                let summary = summaryTemplate.cloneNode();
+                                let date = dateTemplate.cloneNode();
+
+                                summary.textContent = `${release.name} - ${lines[0]}`;
+
+                                detail.appendChild(summary);
+                                detail.insertAdjacentHTML('beforeend', markdownit().render(release.body));
+
+                                date.textContent = moment.tz(release.published_at, GAME_TIME_ZONE).format('Do MMMM Y HH:mm:ss');
+
+                                detail.appendChild(date);
+
+                                container.appendChild(detail);
+                            }
+                        });
+                },
+
+                resetFavico () {
                     VARIABLES.FI.badge(0);
                 },
 
@@ -508,6 +550,7 @@
                         switch (d.a) {
                             case 'ts': // tracker save
                                 localStorage.setItem(`${TRACKER_SAVE_KEY}-${d.s}`, d.d);
+                                document.querySelector('#RQ-dashboard-history-last-save').textContent = moment.tz(GAME_TIME_ZONE).format('Do MMM HH:mm:ss');
                                 break;
 
                             case 'tls': // tracker load section
@@ -596,7 +639,7 @@
                     OBSERVERS.toggleable.health = fn.helpers.initObserver('health', 'data-base', 'td#health');
                     OBSERVERS.toggleable.coordination = fn.helpers.initObserver('coordination', 'data-base', 'td#coordination');
                     OBSERVERS.toggleable.agility = fn.helpers.initObserver('agility', 'data-base', 'td#agility');
-                    OBSERVERS.toggleable.eventAppreviator = OBSERVERS.toggleable.eventAppreviator();
+                    OBSERVERS.toggleable.eventAbbreviator = OBSERVERS.toggleable.eventAbbreviator();
                 },
 
                 setupCSS () {
@@ -657,12 +700,40 @@
 
                     TEMPLATES.hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
     <div class="btn-group">
+        <button type="button" class="btn btn-primary" id="RQ-hub-dashboard">Dashboard</button>
         <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
         <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
         <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
     </div>
     <hr>
     <div id="RQ-hub-sections">
+        <div id="RQ-hub-dashboard-wrapper">
+            <h4 class="text-center">Dashboard</h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <h4 class="text-center">Update log</h4>
+                    <div id="RQ-dashboard-update-log" class="small"></div>
+                </div>
+                <div class="col-md-4">
+                    <h4 class="text-center">Overview</h4>
+                    <table class="table table-condensed rq-styled">
+                        <tr>
+                            <td>Last tracker save</td>
+                            <td id="RQ-dashboard-history-last-save" class="text-right"></td>
+                        </tr>
+                        <tr>
+                            <td>Last check for update</td>
+                            <td id="RQ-dashboard-update-last" class="text-right"></td>
+                        </tr>
+                    </table>                
+                </div>
+                <div class="col-md-4">
+                    <h4 class="text-center">localStorage status</h4>
+                    <div class="text-center text-muted small">clicking the item will delete it (there is a confirmation)</div>
+                    <div id="RQ-dashboard-localstorage-state" class="btn-group-vertical btn-group-xs"></div>
+                </div>
+            </div>
+        </div>
         <div id="RQ-hub-settings-wrapper" style="display: none;">
             ${GM_getResourceText('QoLSettingsHTML')}
         </div>
@@ -696,7 +767,7 @@
                 },
                 setupLoops () {
                     setInterval(fn.__.saveTracker, 6E4); // once a minute ..
-                    setTimeout(fn.__.checkForUpdate, 6 * 60 * 60 * 1000); // every 6 hours ?
+                    setTimeout(fn.__.checkForUpdate, 30 * 1000);
                     setInterval(fn.__.cleanUpTracker, 60 * 60 * 1000); // every hour
                     setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
                 },
@@ -753,6 +824,35 @@
                     VARIABLES.QoLStats.CarvXPReq = player.carving.tnl;
                 },
 
+                localStorageStats () {
+                    let t = 0;
+                    let h = document.querySelector('#RQ-dashboard-localstorage-state');
+
+                    h.innerHTML = '';
+
+                    let el = document.createElement('button');
+                    el.classList.add('btn');
+                    el.classList.add('btn-block');
+                    el.setAttribute('type', 'button');
+
+                    for (let item in localStorage) {
+                        if (localStorage.getItem(item)) {
+                            let x = el.cloneNode();
+                            x.classList.add('btn-primary');
+                            x.classList.add('roa-ls-remove');
+                            x.setAttribute('data-ls-key', item);
+                            let size = localStorage.getItem(item).length;
+                            x.innerHTML = `${item}<span class="badge">${size.format()}</span>`;
+                            h.appendChild(x);
+                            t += size;
+                        }
+                    }
+                    let x = el.cloneNode();
+                    x.classList.add('btn-info');
+                    x.innerHTML = `Total<span class="badge">${t.format()}</span>`;
+                    h.appendChild(x);
+                },
+
                 saveSettings () {
                     localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify(VARIABLES.settings));
                 },
@@ -770,7 +870,7 @@
                     fn.__.saveSettings();
                     fn.__.applySettings();
                 },
-                applySettings() {
+                applySettings () {
                     // tracked stuff from fame to stats, except average damage vs. strength
                     for (let item of VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC)) {
                         if (!OBSERVERS.toggleable.hasOwnProperty(item)) {
@@ -795,9 +895,9 @@
                     }
 
                     // event abbreviator
-                    OBSERVERS.toggleable.eventAppreviator.disconnect();
+                    OBSERVERS.toggleable.eventAbbreviator.disconnect();
                     if (VARIABLES.settings.event_abbreviation) {
-                        OBSERVERS.toggleable.eventAppreviator.restart();
+                        OBSERVERS.toggleable.eventAbbreviator.restart();
                     }
 
                     // chat limiter
@@ -807,7 +907,7 @@
                     }
 
                 },
-                processSettingChange(element, ...hierarchy) {
+                processSettingChange (element, ...hierarchy) {
                     if (1 === hierarchy.length) {
                         let setting = hierarchy.pop();
                         if (!VARIABLES.settings.hasOwnProperty(setting)) {
@@ -971,12 +1071,15 @@
                         }
                         fn.__.saveTracker();
                     }
-                    if (_tracker1) { // not yet, just in case
+                    if (_tracker1) {
                         localStorage.removeItem(TRACKER_SAVE_KEY);
                     }
                 },
                 cleanUpTracker () {
                     for (let section in VARIABLES.tracker) {
+                        if (!VARIABLES.tracker.hasOwnProperty(section)) {
+                            continue;
+                        }
                         if (section === 'avgDmStrStat') {
                             continue;
                         }
@@ -984,7 +1087,7 @@
                             a: 'trackerCleanup',
                             d: VARIABLES.tracker[section],
                             i: section,
-                            mc: VARIABLES.twoWeeksago,
+                            mc: VARIABLES.twoWeeksAgo,
                         });
                     }
                 },
@@ -1032,7 +1135,7 @@
                         a: 'processItem',
                         d: VARIABLES.tracker[section],
                         i: section,
-                        mc: VARIABLES.twoWeeksago,
+                        mc: VARIABLES.twoWeeksAgo,
                     });
                 },
 
@@ -1106,7 +1209,7 @@
                         }
                     }
                 },
-                changeSetting(setting, element) {
+                changeSetting (setting, element) {
                     fn.__.processSettingChange(element, ...setting.split('-'));
                 },
 
@@ -1266,6 +1369,11 @@
                         case 'stats-info':
                             fn.__.showStats();
                             break;
+
+                        case 'dashboard':
+                            fn.__.localStorageStats();
+                            fn.__.getUpdateLog();
+                            break;
                     }
                 },
 
@@ -1304,6 +1412,40 @@
                         default:
                             // :)
                             break;
+                    }
+                },
+
+                removeLocalStorageItem (item, force = false) {
+                    if (null !== localStorage.getItem(item)) {
+                        localStorage.removeItem(item);
+                    }
+                    if (item === SETTINGS_SAVE_KEY) {
+                        fn.__.saveSettings();
+                    }
+                    fn.__.localStorageStats();
+                },
+
+                getEventRewardsRegex () {
+                    return VARIABLES.eventRewardsRegex;
+                },
+
+                showEventRewardRatio (rewardMessage) {
+                    if (!VARIABLES.settings.event_ratio_message) {
+                        return;
+                    }
+                    let [_, ep, plat] = rewardMessage.match(VARIABLES.eventRewardsRegex);
+
+                    ep = parseInt(ep.replace(',', ''));
+                    plat = parseInt(plat.replace(',', ''));
+
+                    let ratio = plat / ep;
+
+                    let message = `<li>[${moment.tz(GAME_TIME_ZONE).format('HH:mm:ss')}] <span class="chat_notification">Your Platinum to Event Points ratio was ~${ratio.toFixed(5)}. (${ep.format()}/${plat.format()}/${ratio.toFixed(5)})</span> </li>`;
+                    fn.helpers.addMessageToChat(message);
+                    console.log(VARIABLES.settings.event_ratio_chat_prepare);
+                    console.log(document.querySelector('#chatMessage').textContent);
+                    if (true === VARIABLES.settings.event_ratio_chat_prepare && document.querySelector('#chatMessage').textContent === '') {
+                        document.querySelector('#chatMessage').textContent = `${ep.format()}/${plat.format()}/${ratio.toFixed(5)}`;
                     }
                 },
             },
@@ -1381,6 +1523,7 @@
     $(document).on('click', '#RoA-QoL-open-hub', function () {
         $('#modalTitle').text('RoA-QoL - HUB');
         $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
+        QoL.hubShowSection('dashboard');
     });
 
     $(document).on('click', '#modalBackground', function () {
@@ -1408,6 +1551,10 @@
         QoL.hubShowSection('settings');
     });
 
+    $(document).on('click', '#RQ-hub-dashboard', function () {
+        QoL.hubShowSection('dashboard');
+    });
+
     $(document).on('click', '#clearBattleStats', function () {
         QoL.resetHourlyStats('battle');
     });
@@ -1424,7 +1571,33 @@
         QoL.resetHourlyStats('carve');
     });
 
-    $(document).on('change', '.qol-setting', function() {
+    $(document).on('change', '.qol-setting', function () {
         QoL.changeSetting(this.getAttribute('data-key'), this);
+    });
+
+    $(document).on('roa-ws:notification', function (e, data) {
+        if (data.m.match(QoL.getEventRewardsRegex())) {
+            QoL.showEventRewardRatio(data.m);
+        }
+    });
+
+    $(document).on('click', '.roa-ls-remove', function () {
+        let lsKey = this.getAttribute('data-ls-key');
+        $.confirm({
+            title: 'localStorage intem deletetion',
+            message: `Are you sure you want to remove ${lsKey} localStorage entry?<br>If this entry is from an userscript, you may need to refresh before it's reentered by said script.`,
+            buttons: {
+                Remove: {
+                    class: 'green',
+                    action: function () {
+                        QoL.removeLocalStorageItem(lsKey);
+                    },
+                },
+                Cancel: {
+                    class: 'red',
+                    action: function () {},
+                },
+            },
+        });
     });
 })(window, jQuery);
