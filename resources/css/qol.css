@@ -80,3 +80,19 @@ div#RQ-hub-wrapper table.rq-styled * {
 #RQ-dashboard-localstorage-state {
     width: 100%;
 }
+
+#RQ-dashboard-update-log details {
+    margin-bottom: 2px;
+}
+
+#RQ-dashboard-update-log details summary {
+    border-top: 1px solid var(--action-color);
+    cursor: pointer;
+}
+
+#RQ-dashboard-update-log details[open] summary {
+    font-style: italic;
+    height: 14px;
+    overflow-y: hidden;
+    color: #777;
+}
