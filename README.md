@@ -13,10 +13,10 @@ Also, an install into a Tampermonkey/Greasemonkey is kinda recommended, since th
 * [Per hour gains for battle and TS](https://i.imgur.com/AaRNfRO.png)
 * [Char count in chat message (max enforced by game is 400)](https://i.imgur.com/68lVp0F.png)
 * [Stamina remaining/Fatigue favicon counter](https://i.imgur.com/qyYmmzT.png)
-* [One-click fame-own gems](https://i.imgur.com/1fZFifw.png)
 * [2 weeks worth of resource gains](https://i.imgur.com/grw0NKV.png)
 * [Event abbreviator](https://i.imgur.com/kdizA2u.png)
 * [One-click fame owning gems](https://i.imgur.com/3kOc8jT.png)
 * [Event ratio computation](https://i.imgur.com/yoRwEiw.png)
 * [Settings](https://i.imgur.com/M8JmvXP.png)
 * [Daily overview of changes to 14 resources](https://i.imgur.com/8YBL00m.png)
+* Auto-set max crystal reward when turning in quest
