@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.0.0
+// @version      2.0.1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180707
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180712
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180707
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180707
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180711
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180707
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -57,6 +57,7 @@
             fame_own_gems: true,
             event_ratio_message: true,
             event_ratio_chat_prepare: true,
+            set_max_quest_reward: true,
             tracker: {
                 fame: true,
                 crystals: true,
@@ -495,10 +496,10 @@
                             version = match[1];
 
                             if (compareVersions(GM_info.script.version, version) < 0) {
-                                let message = `<li>[${moment.tz(GAME_TIME_ZONE).format('HH:mm:ss')}] <span class="chat_notification">RoA-QoL has been updated to version ${version}! <a href="https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js" target="_blank">Update</a> | <a href="https://github.com/edvordo/roa-qol/commits/master" target="_blank">CommitLog</a></span></li>`;
                                 document.querySelector('#RoA-QoL-open-hub').classList.add('qol-update-ready');
+                                document.querySelector('#RQ-dashboard-update-ready').classList.remove('hidden');
                             } else {
-                                setInterval(fn.__.checkForUpdate, VARIABLES.checkForUpdateTimer);
+                                setTimeout(fn.__.checkForUpdate, VARIABLES.checkForUpdateTimer);
                             }
                         });
                 },
@@ -511,6 +512,7 @@
                     let dateTemplate = document.createElement('div');
                     dateTemplate.classList.add('text-right');
                     dateTemplate.classList.add('text-muted');
+                    dateTemplate.classList.add('small');
                     fetch('https://api.github.com/repos/edvordo/roa-qol/releases')
                         .then(response => response.json())
                         .then(releases => {
@@ -523,12 +525,17 @@
 
                                 summary.textContent = `${release.name} - ${lines[0]}`;
 
-                                detail.appendChild(summary);
-                                detail.insertAdjacentHTML('beforeend', markdownit().render(release.body));
-
                                 date.textContent = moment.tz(release.published_at, GAME_TIME_ZONE).format('Do MMMM Y HH:mm:ss');
 
-                                detail.appendChild(date);
+                                summary.appendChild(date);
+
+                                detail.appendChild(summary);
+                                detail.setAttribute('data-version', release.tag_name);
+                                detail.insertAdjacentHTML('beforeend', markdownit().render(release.body));
+                                if (compareVersions(release.tag_name, GM_info.script.version) > 0) {
+                                    detail.setAttribute('open', null);
+                                    detail.classList.add('qol-new-log');
+                                }
 
                                 container.appendChild(detail);
                             }
@@ -718,12 +725,26 @@
                     <h4 class="text-center">Overview</h4>
                     <table class="table table-condensed rq-styled">
                         <tr>
+                            <td>Script version</td>
+                            <td class="text-right">${GM_info.script.version}</td>
+                        </tr>
+                        <tr>
+                            <td>Author</td>
+                            <td class="text-right"><a class="profileLink">Reltorakii</a></td>
+                        </tr>
+                        <tr>
                             <td>Last tracker save</td>
                             <td id="RQ-dashboard-history-last-save" class="text-right"></td>
                         </tr>
                         <tr>
                             <td>Last check for update</td>
                             <td id="RQ-dashboard-update-last" class="text-right"></td>
+                        </tr>
+                        <tr class="hidden" id="RQ-dashboard-update-ready">
+                            <td colspan="2" class="text-center">
+                                <h4 class="text-center">Update ready!</h4>
+                                <a href="${GM_info.script.updateURL}" target="_blank" class="'btn btn-link btn-block">Update now!</a>
+                            </td>
                         </tr>
                     </table>                
                 </div>
@@ -767,7 +788,7 @@
                 },
                 setupLoops () {
                     setInterval(fn.__.saveTracker, 6E4); // once a minute ..
-                    setTimeout(fn.__.checkForUpdate, 30 * 1000);
+                    setTimeout(fn.__.checkForUpdate, 10 * 1000);
                     setInterval(fn.__.cleanUpTracker, 60 * 60 * 1000); // every hour
                     setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
                 },
@@ -1015,6 +1036,9 @@
                     let _tracker2 = localStorage.getItem(`${TRACKER_SAVE_KEY}-platinum`);
                     if (_tracker2) {
                         for (let section in VARIABLES.tracker) {
+                            if (!VARIABLES.tracker.hasOwnProperty(section)) {
+                                continue;
+                            }
                             let sectionData = localStorage.getItem(`${TRACKER_SAVE_KEY}-${section}`);
                             if (sectionData) {
                                 WORKERS.trackerSaveWorker.postMessage({
@@ -1415,7 +1439,7 @@
                     }
                 },
 
-                removeLocalStorageItem (item, force = false) {
+                removeLocalStorageItem (item) {
                     if (null !== localStorage.getItem(item)) {
                         localStorage.removeItem(item);
                     }
@@ -1448,6 +1472,19 @@
                         document.querySelector('#chatMessage').textContent = `${ep.format()}/${plat.format()}/${ratio.toFixed(5)}`;
                     }
                 },
+
+                populateMaxQuestReward() {
+                    if (false === VARIABLES.settings.set_max_quest_reward) {
+                        return false;
+                    }
+                    let maxReward = parseInt(document.querySelector('.max_quest_crystals').textContent);
+                    if (isNaN(maxReward)) {
+                        return false;
+                    }
+                    document.querySelectorAll('.quest_crystal_guess').forEach((e) => {
+                        e.value = maxReward;
+                    });
+                }
             },
         };
 
@@ -1526,7 +1563,7 @@
         QoL.hubShowSection('dashboard');
     });
 
-    $(document).on('click', '#modalBackground', function () {
+    $(document).on('click', '#modalBackground, .closeModal', function () {
         QoL.closeHub();
     });
 
@@ -1599,5 +1636,9 @@
                 },
             },
         });
+    });
+
+    $(document).on('roa-ws:page:quests', function() {
+        QoL.populateMaxQuestReward();
     });
 })(window, jQuery);
