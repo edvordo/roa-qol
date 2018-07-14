@@ -147,6 +147,7 @@
                 subtab: 'platinum',
             },
             twoWeeksAgo: moment.tz(GAME_TIME_ZONE).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00'),
+            tagMap: {}
         };
 
         const TEMPLATES = {
@@ -503,6 +504,23 @@
                             }
                         });
                 },
+                buildTagMap() {
+                    fetch('https://api.github.com/repos/edvordo/roa-qol/tags')
+                        .then(res => res.json())
+                        .then(res => {
+                            console.log(res)
+                            VARIABLES.tagMap = {};
+                            let lastTag = null;
+                            for (let tag of res) {
+                                if (null === lastTag) {
+                                    lastTag = tag.name;
+                                    continue;
+                                }
+                                VARIABLES.tagMap[tag.name] = lastTag;
+                                lastTag = tag.name;
+                            }
+                        });
+                },
                 getUpdateLog () {
                     let container = document.getElementById('RQ-dashboard-update-log');
                     container.innerHTML = '';
@@ -733,6 +751,10 @@
                             <td class="text-right"><a class="profileLink">Reltorakii</a></td>
                         </tr>
                         <tr>
+                            <td>Script homepage</td>
+                            <td class="text-right"><a href="https://github.com/edvordo/roa-qol" target="_blank>edvordo/roa-qol</a></td>
+                        </tr>
+                        <tr>
                             <td>Last tracker save</td>
                             <td id="RQ-dashboard-history-last-save" class="text-right"></td>
                         </tr>
@@ -744,6 +766,7 @@
                             <td colspan="2" class="text-center">
                                 <h4 class="text-center">Update ready!</h4>
                                 <a href="${GM_info.script.updateURL}" target="_blank" class="'btn btn-link btn-block">Update now!</a>
+                                <a href="" id="RQ-update-changes-compare" target="_blank" class="'btn btn-link btn-block">View code changes</a>
                             </td>
                         </tr>
                     </table>                
