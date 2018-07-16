@@ -3,6 +3,8 @@ let generalFormat = 'Do MMM';
 let captionFormat = 'Do MMM HH:mm';
 let GTZ = 'America/New_York';
 onmessage = event => {
+'use strict';
+
     let d = event.data;
 
     if (typeof d !== 'object') {
@@ -80,7 +82,7 @@ onmessage = event => {
                 d.d   - tracker item data
                 d.i   - item name
                 d.gtz - GAME_TIME_ZONE
-                d.mc  - moment compare to (twoWeeksAgo)
+                d.mc  - moment compare to (trackerHistoryThreshold)
              */
             let graphData = [];
             let allData = [];
