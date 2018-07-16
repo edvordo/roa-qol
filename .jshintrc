@@ -1,9 +1,8 @@
 {
+  "esversion": 6,
   "devel": true,
   "globals": {
-    "GM": {
-      "info": true
-    },
+    "GM_info": true,
     "GM_addStyle": true,
     "GM_getResourceText": true,
     "_": {
@@ -11,5 +10,5 @@
       "defaultDeep": true
     }
   },
-  "strict": false
+  "strict": true
 }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.0.1
+// @version      2.1.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -9,9 +9,9 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180712
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
-// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180707
+// @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180717
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180711
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180717
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180707
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -26,6 +26,8 @@
 // ==/UserScript==
 (function (window, $) {
 
+    'use strict';
+
     if (typeof MutationObserver.prototype.restart !== 'function') {
         MutationObserver.prototype.observeArguments = []; // internal variable to store the args
         MutationObserver.prototype.originalObserve = MutationObserver.prototype.observe; // save the original implementation
@@ -38,7 +40,7 @@
         };
     }
 
-    let QoL = (function QoL () {
+    let QoL = (function QoL() {
 
         const GAME_TIME_ZONE = 'America/New_York';
 
@@ -58,6 +60,7 @@
             event_ratio_message: true,
             event_ratio_chat_prepare: true,
             set_max_quest_reward: true,
+            clan_donations_modes: true,
             tracker: {
                 fame: true,
                 crystals: true,
@@ -146,19 +149,36 @@
                 tab: '',
                 subtab: 'platinum',
             },
-            twoWeeksAgo: moment.tz(GAME_TIME_ZONE).subtract(2, 'weeks').format('YYYY-MM-DD 00:00:00'),
-            tagMap: {}
+            trackerHistoryThreshold: moment.tz(GAME_TIME_ZONE).subtract(10, 'days').format('YYYY-MM-DD 00:00:00'),
+
+            tagMap: {},
+
+            donationsTable: document.querySelector('#myClanDonationTable')
         };
 
+        // noinspection JSUnresolvedFunction
         const TEMPLATES = {
             headerHTML: GM_getResourceText('QoLHeaderHTML'),
             hubHTML: '',
             dashboardHTML: ``,
+            clanDonationsModeSelector: `<div class="form-group row" id="RQ-clan-donation-mode-selector-wrapper">
+    <div class="col-md-6 col-lg-5">
+        <div class="input-group input-group-sm">
+            <span class="input-group-btn"><button type="button" class="btn btn-primary" style="margin-top: 0;">View mode</button></span>
+            <select class="form-control" id="RQ-clan-donation-mode-selector">
+                <option value="abbr">Abbreviated</option>
+                <option value="full">Full</option>
+                <option value="percent">Percentage</option>
+            </select>
+            <span class="input-group-btn"><button type="button" class="btn btn-primary" style="margin-top: 0;" id="RQ-donation-table-loaded"></button></span>
+        </div>
+    </div>
+</div>`
         };
 
         const OBSERVERS = {
             toggleable: {
-                eventAbbreviator () {
+                eventAbbreviator() {
                     let regexes = {
                         attack: /You .+ (Bow|Sword|Staff|fists).+([0-9]+ times? hitting [0-9]+ times?), dealing .+ damage.$/i,
                         // You cast 1 spell at [Vermin] Boss Forty-two, dealing 2,127,514,765 damage.
@@ -328,6 +348,8 @@
                             if (!VARIABLES.gems.hasOwnProperty(gemId)) {
                                 continue;
                             }
+                            /** @namespace gem.o */
+                            /** @namespace gem.i */
                             let gem = VARIABLES.gems[gemId];
                             if (gem.o === VARIABLES.username) {
                                 continue;
@@ -340,26 +362,26 @@
                             rowLastTd.appendChild(document.createTextNode(' '));
                             rowLastTd.appendChild(a);
                         }
-                    },
+                    }
                 ),
             },
         };
 
         const fn = {
             helpers: {
-                scrollToBottom (selector) {
+                scrollToBottom(selector) {
                     $(selector).animate({
                         scrollTop: $(selector).prop('scrollHeight'),
                     });
                 },
-                initObserver (name, attrName, selector) {
+                initObserver(name, attrName, selector) {
                     let o = new MutationObserver(function (ml) {
                         for (let m of ml) {
                             if (m.type === 'attributes' && m.attributeName === attrName) {
                                 let oldValue = m.oldValue;
                                 let nowValue = m.target.getAttribute(m.attributeName);
                                 if (oldValue && nowValue && oldValue !== nowValue) {
-                                    VARIABLES.tracker[name][(new Date).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
+                                    VARIABLES.tracker[name][(new Date()).toJSON()] = parseInt(nowValue.replace(/,/g, ''));
                                 }
                             }
                         }
@@ -368,11 +390,11 @@
                     // o.disconnect();
                     return o;
                 },
-                togglePerHourSection (section) {
+                togglePerHourSection(section) {
                     $('.rq-h').addClass('hidden');
                     $(`.rq-h.rq-${section}`).removeClass('hidden');
                 },
-                updateFavico (to, text = null, bg = null) {
+                updateFavico(to, text = null, bg = null) {
                     let _bg = bg;
                     if (bg === null) {
                         _bg = parseInt(to) > 0 ? '#050' : '#a00';
@@ -380,13 +402,13 @@
                     let _text = text === null ? Math.abs(to) : text;
                     VARIABLES.FI.badge(_text, {bgColor: _bg});
                 },
-                hubToggleTo (div = null) {
+                hubToggleTo(div = null) {
                     $('#RQ-hub-sections > div').hide();
                     if (div !== null) {
                         $(div).fadeIn();
                     }
                 },
-                updateStats (type, data) {
+                updateStats(type, data) {
                     let now = moment.tz(GAME_TIME_ZONE);
                     let hour = 60 * 60 * 1000;
                     let tmpl = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h';
@@ -425,6 +447,9 @@
                     }
 
                     for (let e in map) {
+                        if (!map.hasOwnProperty(e)) {
+                            continue;
+                        }
                         let ed = map[e].d !== '' ? map[e].d : e;
 
                         //"<h5>Based upon</h5>" + commatize(Math.floor(startXP))+" XP over "+battles+" battles since "+startTime.toLocaleString()+"<h5>Would be gain / h</h5>"+commatize(Math.floor((60*60*1000/jsonres.p.next_action)*xp))+" / h"
@@ -443,7 +468,7 @@
 
                     }
                 },
-                toggleSetting (key, set = false) {
+                toggleSetting(key, set = false) {
                     if (typeof set === 'boolean') {
                         let element = document.querySelector(`.qol-setting[data-key="${key}"]`);
                         if (element && element.type === 'checkbox') {
@@ -451,7 +476,7 @@
                         }
                     }
                 },
-                populateToSettingsTemplate () {
+                populateToSettingsTemplate() {
                     for (let key in VARIABLES.settings) {
                         if (!VARIABLES.settings.hasOwnProperty(key)) {
                             continue;
@@ -470,13 +495,12 @@
                                 let value2 = value[key2];
                                 if (typeof value2 === 'boolean') {
                                     fn.helpers.toggleSetting(`${key}-${key2}`, value2, false);
-                                    continue;
                                 }
                             }
                         }
                     }
                 },
-                addMessageToChat (message) {
+                addMessageToChat(message) {
                     if (VARIABLES.chatDirection === 'up') {
                         $('#chatMessageList').prepend(message);
                     } else {
@@ -487,7 +511,7 @@
             },
             /** private / internal / helper methods */
             __: {
-                checkForUpdate () {
+                checkForUpdate() {
                     let version = '';
                     document.querySelector('#RQ-dashboard-update-last').textContent = moment.tz(GAME_TIME_ZONE).format('Do MMM HH:mm:ss');
                     fetch(INTERNAL_UPDATE_URI)
@@ -499,6 +523,7 @@
                             if (compareVersions(GM_info.script.version, version) < 0) {
                                 document.querySelector('#RoA-QoL-open-hub').classList.add('qol-update-ready');
                                 document.querySelector('#RQ-dashboard-update-ready').classList.remove('hidden');
+                                fn.__.buildTagMap();
                             } else {
                                 setTimeout(fn.__.checkForUpdate, VARIABLES.checkForUpdateTimer);
                             }
@@ -508,7 +533,6 @@
                     fetch('https://api.github.com/repos/edvordo/roa-qol/tags')
                         .then(res => res.json())
                         .then(res => {
-                            console.log(res)
                             VARIABLES.tagMap = {};
                             let lastTag = null;
                             for (let tag of res) {
@@ -521,7 +545,7 @@
                             }
                         });
                 },
-                getUpdateLog () {
+                getUpdateLog() {
                     let container = document.getElementById('RQ-dashboard-update-log');
                     container.innerHTML = '';
 
@@ -558,13 +582,18 @@
                                 container.appendChild(detail);
                             }
                         });
+                    if (VARIABLES.tagMap.hasOwnProperty(GM_info.script.version)) {
+                        document
+                            .querySelector('#RQ-update-changes-compare')
+                            .setAttribute('href', `https://github.com/edvordo/roa-qol/compare/${GM_info.script.version}...${VARIABLES.tagMap[GM_info.script.version]}`);
+                    }
                 },
 
-                resetFavico () {
+                resetFavico() {
                     VARIABLES.FI.badge(0);
                 },
 
-                setupWorkers () {
+                setupWorkers() {
                     WORKERS.trackerSaveWorker = new Worker('data:application/javascript;base64,' + btoa(GM_getResourceText('QoLTrackerWorker')));
                     WORKERS.trackerSaveWorker.onmessage = e => {
                         let d = e.data;
@@ -649,7 +678,7 @@
                     };
                     WORKERS.trackerSaveWorker.postMessage({a: 'setGTZ', gtz: GAME_TIME_ZONE});
                 },
-                setupObservers () {
+                setupObservers() {
                     OBSERVERS.toggleable.fame = fn.helpers.initObserver('fame', 'title', 'td#fame_points');
                     OBSERVERS.toggleable.crystals = fn.helpers.initObserver('crystals', 'title', 'td.crystals');
                     OBSERVERS.toggleable.platinum = fn.helpers.initObserver('platinum', 'title', 'td.myplatinum');
@@ -667,10 +696,10 @@
                     OBSERVERS.toggleable.eventAbbreviator = OBSERVERS.toggleable.eventAbbreviator();
                 },
 
-                setupCSS () {
+                setupCSS() {
                     GM_addStyle(GM_getResourceText('QoLCSS'));
                 },
-                setupHTML () {
+                setupHTML() {
                     // per hour table
                     let td = document.createElement('td');
                     td.insertAdjacentHTML('afterbegin', TEMPLATES.headerHTML);
@@ -681,8 +710,9 @@
                     $('#RQ-hub-wrapper .dropdown-toggle').dropdown();
                     $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false});
 
+                    document.querySelector('#myClanDonationWrapper').insertAdjacentHTML('afterbegin', TEMPLATES.clanDonationsModeSelector);
                 },
-                setupTemplates () {
+                setupTemplates() {
                     let chartsContentTmpl = '';
                     let chartsTabsTmpl = '';
 
@@ -752,7 +782,7 @@
                         </tr>
                         <tr>
                             <td>Script homepage</td>
-                            <td class="text-right"><a href="https://github.com/edvordo/roa-qol" target="_blank>edvordo/roa-qol</a></td>
+                            <td class="text-right"><a href="https://github.com/edvordo/roa-qol" target="_blank>edvordo/roa-qol">edvordo/roa-qol</a></td>
                         </tr>
                         <tr>
                             <td>Last tracker save</td>
@@ -809,13 +839,13 @@
     </div>
 </div>`;
                 },
-                setupLoops () {
+                setupLoops() {
                     setInterval(fn.__.saveTracker, 6E4); // once a minute ..
                     setTimeout(fn.__.checkForUpdate, 10 * 1000);
                     setInterval(fn.__.cleanUpTracker, 60 * 60 * 1000); // every hour
                     setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
                 },
-                setupVariables () {
+                setupVariables() {
                     // per hour
                     $('#QoLStats td[id][data-toggle]').each(function (i, e) {
                         e = $(e);
@@ -858,7 +888,7 @@
                         });
                     }
                 },
-                setupLevelRequirements (player) {
+                setupLevelRequirements(player) {
                     VARIABLES.QoLStats.PlXPReq = player.levelCost;
                     VARIABLES.QoLStats.FoodXPReq = player.fishing.tnl;
                     VARIABLES.QoLStats.WoodXPReq = player.woodcutting.tnl;
@@ -868,7 +898,7 @@
                     VARIABLES.QoLStats.CarvXPReq = player.carving.tnl;
                 },
 
-                localStorageStats () {
+                localStorageStats() {
                     let t = 0;
                     let h = document.querySelector('#RQ-dashboard-localstorage-state');
 
@@ -897,10 +927,10 @@
                     h.appendChild(x);
                 },
 
-                saveSettings () {
+                saveSettings() {
                     localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify(VARIABLES.settings));
                 },
-                loadSettings () {
+                loadSettings() {
                     let settings = localStorage.getItem(SETTINGS_SAVE_KEY);
 
                     try {
@@ -914,7 +944,7 @@
                     fn.__.saveSettings();
                     fn.__.applySettings();
                 },
-                applySettings () {
+                applySettings() {
                     // tracked stuff from fame to stats, except average damage vs. strength
                     for (let item of VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC)) {
                         if (!OBSERVERS.toggleable.hasOwnProperty(item)) {
@@ -950,8 +980,13 @@
                         document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', '0 / 400');
                     }
 
+                    if (true === VARIABLES.settings.clan_donations_modes) {
+                        document.querySelector('#RQ-clan-donation-mode-selector-wrapper').classList.remove('hidden');
+                    } else {
+                        document.querySelector('#RQ-clan-donation-mode-selector-wrapper').classList.add('hidden');
+                    }
                 },
-                processSettingChange (element, ...hierarchy) {
+                processSettingChange(element, ...hierarchy) {
                     if (1 === hierarchy.length) {
                         let setting = hierarchy.pop();
                         if (!VARIABLES.settings.hasOwnProperty(setting)) {
@@ -973,7 +1008,7 @@
                     fn.__.saveSettings();
                 },
 
-                registerFameOwnGemTableObserver () {
+                registerFameOwnGemTableObserver() {
                     OBSERVERS.general.fameOwnGemsObserver.observe(document.querySelector('table#inventoryOtherTable'), {childList: true});
                     setTimeout(() => {
                         log('Disconnecting gem list observer');
@@ -983,10 +1018,10 @@
                     }, 2E3);
                 },
 
-                saveHouseInfo () {
+                saveHouseInfo() {
                     sessionStorage.setItem('RoAHouse', JSON.stringify(VARIABLES.house));
                 },
-                loadHouseInfo () {
+                loadHouseInfo() {
                     let houseInfo = sessionStorage.getItem('RoAHouse');
                     if (houseInfo) {
                         VARIABLES.house = JSON.parse(houseInfo);
@@ -994,7 +1029,7 @@
                         fn.__.saveHouseInfo();
                     }
                 },
-                updateRooms (roomList) {
+                updateRooms(roomList) {
                     for (let room of roomList) {
                         if (!VARIABLES.house.rooms.hasOwnProperty(room.room_type)) {
                             VARIABLES.house.rooms[room.room_type] = {
@@ -1004,13 +1039,13 @@
                         VARIABLES.house.roomNameMap[room.room_type] = room.name;
                     }
                 },
-                updateHouseRoom (roomType, items) {
+                updateHouseRoom(roomType, items) {
                     for (let item of items) {
                         VARIABLES.house.rooms[roomType].items[item.item_type] = item;
                         setTimeout(fn.__.setRoomItemTooltip, 500, roomType, item.item_type, item);
                     }
                 },
-                setRoomItemTooltip (roomType, itemType, data) {
+                setRoomItemTooltip(roomType, itemType, data) {
                     let tooltip = `<h5>Level upgrade</h5>
         <a class="houseLabel">Cost</a>
             <div>${data.level_upgrade_cost}</div>
@@ -1024,7 +1059,7 @@
                     });
                 },
 
-                logAvgDmg (battle) {
+                logAvgDmg(battle) {
                     if (!VARIABLES.settings.tracker.average_damage) {
                         return;
                     }
@@ -1050,10 +1085,10 @@
                     VARIABLES.tracker.avgDmStrStat[dmgType][battle.p.strength.base].a++;
                 },
 
-                saveTracker () {
+                saveTracker() {
                     WORKERS.trackerSaveWorker.postMessage({a: 'trackerSave', t: VARIABLES.tracker});
                 },
-                loadTracker () {
+                loadTracker() {
                     let _tracker = {};
                     let _tracker1 = localStorage.getItem(TRACKER_SAVE_KEY);
                     let _tracker2 = localStorage.getItem(`${TRACKER_SAVE_KEY}-platinum`);
@@ -1122,7 +1157,7 @@
                         localStorage.removeItem(TRACKER_SAVE_KEY);
                     }
                 },
-                cleanUpTracker () {
+                cleanUpTracker() {
                     for (let section in VARIABLES.tracker) {
                         if (!VARIABLES.tracker.hasOwnProperty(section)) {
                             continue;
@@ -1134,12 +1169,12 @@
                             a: 'trackerCleanup',
                             d: VARIABLES.tracker[section],
                             i: section,
-                            mc: VARIABLES.twoWeeksAgo,
+                            mc: VARIABLES.trackerHistoryThreshold,
                         });
                     }
                 },
 
-                showStats () {
+                showStats() {
                     document.querySelector('#RQ-hub-stats-avg-dmg-data tbody').innerHTML = '<tr><td colspan="6" class="text-center"><em>No available data</em></td></tr>';
 
                     let currentSkill = document.querySelector('#weaponskill').textContent.split(' ')[0];
@@ -1153,7 +1188,7 @@
                         d: VARIABLES.tracker.avgDmStrStat[currentSkill],
                     });
                 },
-                showChart (elem, name = '', data = []) {
+                showChart(elem, name = '', data = []) {
                     if (data.length) {
                         new Dygraph(document.querySelector(elem), data, {
                             labels: ['Time', name],
@@ -1169,7 +1204,7 @@
                         });
                     }
                 },
-                showTrackerStatsSection (section) {
+                showTrackerStatsSection(section) {
                     let list = VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC);
                     if (null === section || list.indexOf(section) === -1) {
                         section = VARIABLES.hub.subtab;
@@ -1182,11 +1217,11 @@
                         a: 'processItem',
                         d: VARIABLES.tracker[section],
                         i: section,
-                        mc: VARIABLES.twoWeeksAgo,
+                        mc: VARIABLES.trackerHistoryThreshold,
                     });
                 },
 
-                startup () {
+                startup() {
                     return {
                         'Starting save worker ..': fn.__.setupWorkers,
                         'Setting up styles ..': fn.__.setupCSS,
@@ -1201,7 +1236,7 @@
                     };
                 },
 
-                init () {
+                init() {
                     log('Starting up ..');
                     let startup = fn.__.startup();
                     for (let message in startup) {
@@ -1215,7 +1250,7 @@
             },
             /** public QoL object methods */
             API: {
-                addFameOwnGemsButton (gems) {
+                addFameOwnGemsButton(gems) {
                     if (!VARIABLES.settings.fame_own_gems) {
                         return;
                     }
@@ -1225,7 +1260,7 @@
                     fn.__.registerFameOwnGemTableObserver();
                 },
 
-                handleHouseData (type, data) {
+                handleHouseData(type, data) {
                     if (!VARIABLES.settings.house_tooltips) {
                         return;
                     }
@@ -1237,10 +1272,10 @@
                     fn.__.saveHouseInfo();
                 },
 
-                setChatDirection (dir) {
+                setChatDirection(dir) {
                     VARIABLES.chatDirection = dir;
                 },
-                updateMessageLimit (msgBox) {
+                updateMessageLimit(msgBox) {
                     if (!VARIABLES.settings.char_count) {
                         return;
                     }
@@ -1248,7 +1283,7 @@
                     document.querySelector('#chatMessageWrapper').setAttribute('data-limiter', `${lng} / 400`);
                 },
 
-                processLoginInfo (data) {
+                processLoginInfo(data) {
                     if (data.hasOwnProperty('p')) {
                         fn.__.setupLevelRequirements(data.p);
                         if (data.p.hasOwnProperty('chatScroll')) {
@@ -1256,11 +1291,11 @@
                         }
                     }
                 },
-                changeSetting (setting, element) {
+                changeSetting(setting, element) {
                     fn.__.processSettingChange(element, ...setting.split('-'));
                 },
 
-                processBattle (message) {
+                processBattle(message) {
                     if (message.hasOwnProperty('results')) {
                         let data = message.results;
 
@@ -1295,7 +1330,7 @@
                         }
                     }
                 },
-                processTS (message) {
+                processTS(message) {
                     if (message.hasOwnProperty('results')) {
                         let data = message.results;
                         fn.helpers.togglePerHourSection('harvest');
@@ -1329,7 +1364,7 @@
                         }
                     }
                 },
-                processCraft (message) {
+                processCraft(message) {
                     if (message.hasOwnProperty('results')) {
                         let data = message.results;
                         fn.helpers.togglePerHourSection('craft');
@@ -1338,12 +1373,12 @@
                         if (data.hasOwnProperty('a')) {
                             VARIABLES.QoLStats.d.CTXPPerHour += data.a.xp;
                             let token = 'CTXPReq';
-                            VARIABLES.QoLStats[token] = data.p['crafting'].tnl;
+                            VARIABLES.QoLStats[token] = data.p.crafting.tnl;
                             let eta;
                             if (data.a.xp === 0) {
                                 eta = 'never';
                             } else {
-                                eta = (VARIABLES.QoLStats[token] - data.p['crafting'].xp) / data.a.xp * data.p.next_action;
+                                eta = (VARIABLES.QoLStats[token] - data.p.crafting.xp) / data.a.xp * data.p.next_action;
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -1358,7 +1393,7 @@
                         }
                     }
                 },
-                processCarve (message) {
+                processCarve(message) {
                     if (message.hasOwnProperty('results')) {
                         let data = message.results;
                         fn.helpers.togglePerHourSection('carve');
@@ -1367,12 +1402,12 @@
                         if (data.hasOwnProperty('a')) {
                             VARIABLES.QoLStats.d.CAXPPerHour += data.a.xp;
                             let token = 'CAXPReq';
-                            VARIABLES.QoLStats[token] = data.p['carving'].tnl;
+                            VARIABLES.QoLStats[token] = data.p.carving.tnl;
                             let eta;
                             if (data.a.xp === 0) {
                                 eta = 'never';
                             } else {
-                                eta = (VARIABLES.QoLStats[token] - data.p['carving'].xp) / data.a.xp * data.p.next_action;
+                                eta = (VARIABLES.QoLStats[token] - data.p.carving.xp) / data.a.xp * data.p.next_action;
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -1387,7 +1422,7 @@
                         }
                     }
                 },
-                processEventUpdate (message) {
+                processEventUpdate(message) {
                     fn.helpers.togglePerHourSection('event-update');
 
                     $('#EventTotalParticipants').text((message.attacker_count + message.harvester_count + message.crafter_count + message.carver_count).format());
@@ -1396,17 +1431,17 @@
                     $('#EventCraftingParticipants').text(message.crafter_count.format());
                     $('#EventCarvingParticipants').text(message.carver_count.format());
                 },
-                processEventAction (message) {
+                processEventAction(message) {
                     if (VARIABLES.settings.badge_event) {
                         fn.helpers.updateFavico(message.results.stamina, (message.results.time_remaining * 1000).toTimeRemaining(true).replace(':', ''), '#ff1493');
                     }
                 },
 
-                closeHub () {
+                closeHub() {
                     $('#RQ-hub-wrapper').hide();
                     fn.helpers.hubToggleTo();
                 },
-                hubShowSection (main, sub = null) {
+                hubShowSection(main, sub = null) {
                     fn.helpers.hubToggleTo(`#RQ-hub-${main}-wrapper`);
                     switch (main) {
                         case 'charts':
@@ -1424,7 +1459,7 @@
                     }
                 },
 
-                resetHourlyStats (section) {
+                resetHourlyStats(section) {
                     switch (section) {
                         case 'battle':
                             VARIABLES.QoLStats.bs = moment.tz(GAME_TIME_ZONE);
@@ -1462,7 +1497,7 @@
                     }
                 },
 
-                removeLocalStorageItem (item) {
+                removeLocalStorageItem(item) {
                     if (null !== localStorage.getItem(item)) {
                         localStorage.removeItem(item);
                     }
@@ -1472,11 +1507,11 @@
                     fn.__.localStorageStats();
                 },
 
-                getEventRewardsRegex () {
+                getEventRewardsRegex() {
                     return VARIABLES.eventRewardsRegex;
                 },
 
-                showEventRewardRatio (rewardMessage) {
+                showEventRewardRatio(rewardMessage) {
                     if (!VARIABLES.settings.event_ratio_message) {
                         return;
                     }
@@ -1506,6 +1541,61 @@
                     }
                     document.querySelectorAll('.quest_crystal_guess').forEach((e) => {
                         e.value = maxReward;
+                    });
+                },
+
+                parseClanDonationsTable() {
+                    if (false === VARIABLES.settings.clan_donations_modes) {
+                        return false;
+                    }
+                    return _.debounce(function () {
+                        let totals = {};
+
+                        $('#RQ-clan-donation-mode-selector').val('abbr');
+                        $('#RQ-donation-table-loaded').text(moment.tz(GAME_TIME_ZONE).format('HH:mm:ss'));
+
+                        let cells = document.querySelectorAll('#myClanDonationTable tbody td[title][class*="donator_list"]');
+                        cells.forEach(e => {
+                            let category = e.classList.value.match(/donator_list_([a-z]+)/);
+                            if (null === category) {
+                                return false;
+                            }
+                            category = category[1];
+                            if (!totals.hasOwnProperty(category)) {
+                                totals[category] = 0;
+                            }
+                            let title = e.getAttribute('title').replace(/,/g, '');
+                            title = parseInt(title);
+                            if (isNaN(title)) {
+                                return false;
+                            }
+                            totals[category] += title;
+                            e.setAttribute('data-abbr', e.textContent);
+                            e.setAttribute('data-full', title);
+                            e.setAttribute('data-category', category);
+                        });
+
+                        cells.forEach(e => {
+                            if (!e.hasAttribute('data-full')) {
+                                return false;
+                            }
+                            let category = e.getAttribute('data-category');
+
+                            let full = e.getAttribute('data-full');
+                            full = parseInt(full);
+
+                            let percent = (full / totals[category]) * 100;
+                            e.setAttribute('data-percent', `~${percent.format(2)}%`);
+                            e.setAttribute('data-full', full.format());
+                        });
+                    }, 1000)();
+                },
+                toggleClanDonationsTableMode(mode = 'abbr') {
+                    if (false === VARIABLES.settings.clan_donations_modes) {
+                        return false;
+                    }
+                    document.querySelectorAll(`#myClanDonationTable td[data-${mode}]`).forEach(e => {
+                        e.textContent = e.getAttribute(`data-${mode}`);
                     });
                 }
             },
@@ -1644,7 +1734,7 @@
     $(document).on('click', '.roa-ls-remove', function () {
         let lsKey = this.getAttribute('data-ls-key');
         $.confirm({
-            title: 'localStorage intem deletetion',
+            title: 'localStorage item deletetion',
             message: `Are you sure you want to remove ${lsKey} localStorage entry?<br>If this entry is from an userscript, you may need to refresh before it's reentered by said script.`,
             buttons: {
                 Remove: {
@@ -1655,13 +1745,23 @@
                 },
                 Cancel: {
                     class: 'red',
-                    action: function () {},
+                    action: function () {
+                    },
                 },
             },
         });
     });
 
-    $(document).on('roa-ws:page:quests', function() {
+    $(document).on('roa-ws:page:quests', function () {
         QoL.populateMaxQuestReward();
     });
+
+    $(document).on('roa-ws:page:clan_donations', function () {
+        QoL.parseClanDonationsTable();
+    });
+
+    $(document).on('change', '#RQ-clan-donation-mode-selector', function () {
+        QoL.toggleClanDonationsTableMode(this.value);
+    });
+
 })(window, jQuery);
