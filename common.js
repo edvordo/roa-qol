@@ -75,8 +75,11 @@ if (typeof Number.prototype.toTimeEstimate !== 'function') {
 }
 
 if (typeof Number.prototype.toTimeRemaining !== 'function') {
-    Number.prototype.toTimeRemaining = function (colonDelimited = false) {
+    Number.prototype.toTimeRemaining = function (colonDelimited) {
         'use strict';
+        if (typeof colonDelimited === 'undefined') {
+            colonDelimited = false;
+        }
         // time in miliseconds, a.k.a. Date.now()
         let value = this.valueOf() / 1000;
 
