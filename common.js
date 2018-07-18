@@ -1,6 +1,7 @@
 if (typeof String.prototype.formatQoL !== 'function') {
     // courtesy of http://stackoverflow.com/a/18234317
     String.prototype.formatQoL = String.prototype.formatQoL || function () {
+        'use strict';
         let str = this.toString();
         if (arguments.length) {
             let t = typeof arguments[0];
@@ -16,15 +17,28 @@ if (typeof String.prototype.formatQoL !== 'function') {
     };
 }
 
+if (typeof String.prototype.ucWords !== 'function') {
+    String.prototype.ucWords = function() {
+        'use strict';
+        let split = this.toString().split(' ');
+
+        let upCased = split.map(i => i.charAt(0).toUpperCase() + i.substring(1));
+
+        return upCased.join(' ');
+    };
+}
+
 if (typeof Number.prototype.format !== 'function') {
-    Number.prototype.format = function(deciamalPaces, numbersInGroup) {
+    Number.prototype.format = function (deciamalPaces, numbersInGroup) {
+        'use strict';
         let a = '\\d(?=(\\d{' + (numbersInGroup || 3) + '})+' + (deciamalPaces > 0 ? '\\.' : '$') + ')';
         return (Math.floor(1000 * this) / 1000).toFixed(Math.max(0, ~~deciamalPaces)).replace(new RegExp(a, 'g'), '$&,');
-    }
+    };
 }
 
 if (typeof Number.prototype.toTimeEstimate !== 'function') {
     Number.prototype.toTimeEstimate = function () {
+        'use strict';
         let _minute = 1000 * 60;
         let _hour = _minute * 60;
         let _day = _hour * 24;
@@ -62,6 +76,7 @@ if (typeof Number.prototype.toTimeEstimate !== 'function') {
 
 if (typeof Number.prototype.toTimeRemaining !== 'function') {
     Number.prototype.toTimeRemaining = function (colonDelimited = false) {
+        'use strict';
         // time in miliseconds, a.k.a. Date.now()
         let value = this.valueOf() / 1000;
 
@@ -85,24 +100,57 @@ if (typeof Number.prototype.toTimeRemaining !== 'function') {
 
 if (typeof Number.prototype.abbr !== 'function') {
     Number.prototype.abbr = function () {
+        'use strict';
         let value = this.valueOf();
 
-        let markers = ['', 'k', 'M', 'B', 'T', 'Qa', 'Qi', 'S', 'O', 'N', 'Dd'];
-
-        let index = 0;
-        while (value >= 1000) {
-            index++;
-            value /= 1000;
+        let abbrMap = [
+            {t: 1e96, a: ':kuop:'},
+            {t: 1e93, a: 'Tg'},
+            {t: 1e90, a: 'NoV'},
+            {t: 1e87, a: 'OcV'},
+            {t: 1e84, a: 'SpV'},
+            {t: 1e81, a: 'SeV'},
+            {t: 1e78, a: 'QiV'},
+            {t: 1e75, a: 'QaV'},
+            {t: 1e72, a: 'TrV'},
+            {t: 1e69, a: 'DuV'},
+            {t: 1e66, a: 'UnV'},
+            {t: 1e63, a: 'Vi'},
+            {t: 1e60, a: 'NoD'},
+            {t: 1e57, a: 'OcD'},
+            {t: 1e54, a: 'SpD'},
+            {t: 1e51, a: 'SeD'},
+            {t: 1e48, a: 'QiD'},
+            {t: 1e45, a: 'QaD'},
+            {t: 1e42, a: 'TrD'},
+            {t: 1e39, a: 'DuD'},
+            {t: 1e36, a: 'UnD'},
+            {t: 1e33, a: 'De'},
+            {t: 1e30, a: 'No'},
+            {t: 1e27, a: 'Oc'},
+            {t: 1e24, a: 'Sp'},
+            {t: 1e21, a: 'Sx'},
+            {t: 1e18, a: 'Qi'},
+            {t: 1e15, a: 'Qa'},
+            {t: 1e12, a: 'T'},
+            {t: 1e9, a: 'B'},
+            {t: 1e6, a: 'M'},
+            {t: 1e3, a: 'K'}
+        ];
+        if (value > abbrMap[0].t) {
+            return abbrMap[0].a;
         }
 
-        return `${Math.floor(value * 10) / 10}${markers[index]}`;
+        for (let threshold of abbrMap) {
+            if (value > threshold.t) {
+                return (value / threshold.t).format(2) + threshold.a;
+            }
+        }
+        return value.format();
     };
 }
 
-if (typeof isIterable === 'undefined') {
-    const isIterable = obj => obj !== null && typeof obj[Symbol.iterator] === 'function';
-}
-
-function log (message) {
+function log(message) {
+    'use strict';
     console.log(`[${moment().format('Do MMM Y HH:mm:ss')}] [RoA-QoL (v${GM_info.script.version})] ${message}`);
 }
