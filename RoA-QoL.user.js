@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.1.0
+// @version      2.2.0-beta
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -11,13 +11,14 @@
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180717
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180717
-// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180707
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180719
+// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180718-746
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
 // @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
 // @require      https://cdn.rawgit.com/markdown-it/markdown-it/8.4.1/dist/markdown-it.min.js
+// @require      https://cdn.jsdelivr.net/npm/vue
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
@@ -61,6 +62,7 @@
             event_ratio_chat_prepare: true,
             set_max_quest_reward: true,
             clan_donations_modes: true,
+            drop_tracker: true,
             tracker: {
                 fame: true,
                 crystals: true,
@@ -141,6 +143,7 @@
                 stuffDDLC: [],
                 map: {},
             },
+
             house: {
                 rooms: {},
                 roomNameMap: {},
@@ -150,6 +153,22 @@
                 subtab: 'platinum',
             },
             trackerHistoryThreshold: moment.tz(GAME_TIME_ZONE).subtract(10, 'days').format('YYYY-MM-DD 00:00:00'),
+
+
+            drop_tracker: {
+                trackerStart: moment.tz(GAME_TIME_ZONE).format('Do MMM Y HH:mm:ss'),
+                actions: {battle: 0, TS: 0, craft: 0, carve: 0},
+                random_drops: {
+                    total: {battle: {t: 0, a: null}, TS: {t: 0, a: null}, craft: {t: 0, a: null}, carve: {t: 0, a: null}},
+                    plundering: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
+                    multi_drop: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
+                    items: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}}
+                },
+                stats_drops: {
+                    total: {battle: {t: 0, a: null},TS: {t: 0, a: null},craft: {t: 0, a: null},carve: {t: 0, a: null}},
+                    growth: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
+                }
+            },
 
             tagMap: {},
 
@@ -754,90 +773,175 @@
                     chartsTabsTmpl += `</ul></li>`;
 
                     TEMPLATES.hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
-    <div class="btn-group">
-        <button type="button" class="btn btn-primary" id="RQ-hub-dashboard">Dashboard</button>
-        <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
-        <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
-        <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
-    </div>
-    <hr>
-    <div id="RQ-hub-sections">
-        <div id="RQ-hub-dashboard-wrapper">
-            <h4 class="text-center">Dashboard</h4>
-            <div class="row">
-                <div class="col-md-4">
-                    <h4 class="text-center">Update log</h4>
-                    <div id="RQ-dashboard-update-log" class="small"></div>
-                </div>
-                <div class="col-md-4">
-                    <h4 class="text-center">Overview</h4>
-                    <table class="table table-condensed rq-styled">
-                        <tr>
-                            <td>Script version</td>
-                            <td class="text-right">${GM_info.script.version}</td>
-                        </tr>
-                        <tr>
-                            <td>Author</td>
-                            <td class="text-right"><a class="profileLink">Reltorakii</a></td>
-                        </tr>
-                        <tr>
-                            <td>Script homepage</td>
-                            <td class="text-right"><a href="https://github.com/edvordo/roa-qol" target="_blank>edvordo/roa-qol">edvordo/roa-qol</a></td>
-                        </tr>
-                        <tr>
-                            <td>Last tracker save</td>
-                            <td id="RQ-dashboard-history-last-save" class="text-right"></td>
-                        </tr>
-                        <tr>
-                            <td>Last check for update</td>
-                            <td id="RQ-dashboard-update-last" class="text-right"></td>
-                        </tr>
-                        <tr class="hidden" id="RQ-dashboard-update-ready">
-                            <td colspan="2" class="text-center">
-                                <h4 class="text-center">Update ready!</h4>
-                                <a href="${GM_info.script.updateURL}" target="_blank" class="'btn btn-link btn-block">Update now!</a>
-                                <a href="" id="RQ-update-changes-compare" target="_blank" class="'btn btn-link btn-block">View code changes</a>
-                            </td>
-                        </tr>
-                    </table>                
-                </div>
-                <div class="col-md-4">
-                    <h4 class="text-center">localStorage status</h4>
-                    <div class="text-center text-muted small">clicking the item will delete it (there is a confirmation)</div>
-                    <div id="RQ-dashboard-localstorage-state" class="btn-group-vertical btn-group-xs"></div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary" id="RQ-hub-dashboard">Dashboard</button>
+            <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
+            <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
+            <button type="button" class="btn btn-primary" id="RQ-hub-drop-tracker">Drop tracker</button>
+            <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
+        </div>
+        <hr>
+        <div id="RQ-hub-sections">
+            <div id="RQ-hub-dashboard-wrapper">
+                <h4 class="text-center">Dashboard</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h4 class="text-center">Update log</h4>
+                        <div id="RQ-dashboard-update-log" class="small"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <h4 class="text-center">Overview</h4>
+                        <table class="table table-condensed rq-styled">
+                            <tr>
+                                <td>Script version</td>
+                                <td class="text-right">${GM_info.script.version}</td>
+                            </tr>
+                            <tr>
+                                <td>Author</td>
+                                <td class="text-right"><a class="profileLink">Reltorakii</a></td>
+                            </tr>
+                            <tr>
+                                <td>Script homepage</td>
+                                <td class="text-right"><a href="https://github.com/edvordo/roa-qol" target="_blank>edvordo/roa-qol">edvordo/roa-qol</a></td>
+                            </tr>
+                            <tr>
+                                <td>Last tracker save</td>
+                                <td id="RQ-dashboard-history-last-save" class="text-right"></td>
+                            </tr>
+                            <tr>
+                                <td>Last check for update</td>
+                                <td id="RQ-dashboard-update-last" class="text-right"></td>
+                            </tr>
+                            <tr class="hidden" id="RQ-dashboard-update-ready">
+                                <td colspan="2" class="text-center">
+                                    <h4 class="text-center">Update ready!</h4>
+                                    <a href="${GM_info.script.updateURL}" target="_blank" class="'btn btn-link btn-block">Update now!</a>
+                                    <a href="" id="RQ-update-changes-compare" target="_blank" class="'btn btn-link btn-block">View code changes</a>
+                                </td>
+                            </tr>
+                        </table>                
+                    </div>
+                    <div class="col-md-4">
+                        <h4 class="text-center">localStorage status</h4>
+                        <div class="text-center text-muted small">clicking the item will delete it (there is a confirmation)</div>
+                        <div id="RQ-dashboard-localstorage-state" class="btn-group-vertical btn-group-xs"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div id="RQ-hub-settings-wrapper" style="display: none;">
-            ${GM_getResourceText('QoLSettingsHTML')}
-        </div>
-        <div id="RQ-hub-charts-wrapper" style="display: none;">
-            <ul class="nav nav-tabs" id="RQ-hub-charts-tabs">${chartsTabsTmpl}</ul>
-            <div class="tab-content">${chartsContentTmpl}</div>
-        </div>
-        <div id="RQ-hub-stats-info-wrapper" style="display: none;">
-            <h3 class="text-center">Strength &raquo; AVG damage</h3>
-            <div class="text-center" iD="RQ-hub-chart-avg-dmg-subtitle"></div>
-            <div id="RQ-hub-chart-avg-dmg" style="width:100%;height:300px;"></div>
-            <table id="RQ-hub-stats-avg-dmg-data" class="table table-condensed table-bordered rq-styled">
-                <caption class="text-center"></caption>
-                <thead>
-                    <tr>
-                        <th>Since</th>
-                        <th>Base strength</th>
-                        <th>Total strength</th>
-                        <th>Total damage</th>
-                        <th>Actions</th>
-                        <th>AVG damage</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+            <div id="RQ-hub-settings-wrapper" style="display: none;">
+                ${GM_getResourceText('QoLSettingsHTML')}
+            </div>
+            <div id="RQ-hub-charts-wrapper" style="display: none;">
+                <ul class="nav nav-tabs" id="RQ-hub-charts-tabs">${chartsTabsTmpl}</ul>
+                <div class="tab-content">${chartsContentTmpl}</div>
+            </div>
+            <div id="RQ-hub-stats-info-wrapper" style="display: none;">
+                <h3 class="text-center">Strength &raquo; AVG damage</h3>
+                <div class="text-center" iD="RQ-hub-chart-avg-dmg-subtitle"></div>
+                <div id="RQ-hub-chart-avg-dmg" style="width:100%;height:300px;"></div>
+                <table id="RQ-hub-stats-avg-dmg-data" class="table table-condensed table-bordered rq-styled">
+                    <caption class="text-center"></caption>
+                    <thead>
+                        <tr>
+                            <th>Since</th>
+                            <th>Base strength</th>
+                            <th>Total strength</th>
+                            <th>Total damage</th>
+                            <th>Actions</th>
+                            <th>AVG damage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            <div id="RQ-hub-drop-tracker-wrapper">
+            <h4 class="text-center">Drop tracker</h4>
+            <div class="row">
+                <div class="col-xs-12">
+                    <div id="rq-dt-table">
+                        <table class="table table-condensed table-bordered rq-styled">
+                            <caption class="text-center">Tracked since: {{ drop_tracker.trackerStart }}</caption>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="2">{{ category.ucWords() }}: {{ actions }}</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
+                                <tr><th class="text-center" colspan="10">Drops</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(categories, item) in drop_tracker.random_drops" :class="colorClassFor(item)">
+                                    <td width="30%">{{ item.split('_').join(' ').ucWords() }}</td>
+                                    <td class="text-right" width="7%" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
+                                    <td class="text-right" width="9%" :class="{'text-muted':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
+                                    <td class="text-right" width="9%" :class="{'text-muted':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
+                                    <td class="text-right" width="9%" :class="{'text-muted':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
+                                    <td class="text-right" width="9%" :class="{'text-muted':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <th class="text-right" width="7%" :title="getTotal('random_drops', item).format()">{{ getTotal('random_drops', item).abbr() }}</th>
+                                </tr>
+                            </tbody>
+                            <thead>
+                                <tr><th class="text-center" colspan="10">Stats</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(categories, item) in drop_tracker.stats_drops" :class="colorClassFor(item)">
+                                    <td>{{ item.split('_').join(' ').ucWords() }}</td>
+                                    <td class="text-right" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
+                                    <td class="text-right" :class="{'text-muted':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
+                                    <td class="text-right" :class="{'text-muted':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
+                                    <td class="text-right" :class="{'text-muted':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
+                                    <td class="text-right" :class="{'text-muted':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <th class="text-right" :title="getTotal('stats_drops', item).format()">{{ getTotal('stats_drops', item).abbr() }}</th>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
         </div>
     </div>
 </div>`;
+                },
+                setupVue() {
+                    let el = new Vue({
+                        debug: true,
+                        el: '#rq-dt-table',
+                        data: VARIABLES,
+                        methods: {
+                            getTotal(section, item) {
+                                if (!this.drop_tracker.hasOwnProperty(section)) {
+                                    return 0;
+                                }
+                                if (!this.drop_tracker[section].hasOwnProperty(item)) {
+                                    return 0;
+                                }
+                                let values = Object.values(this.drop_tracker[section][item]);
+
+                                return values.reduce((carry, value) => carry + value.t, 0);
+                            },
+                            colorClassFor(item) {
+                                return {
+                                    'crystals': item === 'crystals',
+                                    'platinum': item === 'platinum coins',
+                                    'gold': item === 'gold coins',
+                                    'crafting_materials': item === 'crafting materials',
+                                    'gem_fragments': item === 'gem fragments',
+                                    'ruby': item === 'strength',
+                                    'opal': item === 'health',
+                                    'sapphire': item === 'coordination',
+                                    'emerald': item === 'agility',
+                                };
+                            }
+                        }
+                    });
                 },
                 setupLoops() {
                     setInterval(fn.__.saveTracker, 6E4); // once a minute ..
@@ -962,10 +1066,16 @@
                         }
                     }
 
-                    let tab = document.querySelector(`#RQ-hub-stats`);
-                    tab.classList.add('hidden');
+                    let tabSTS = document.querySelector(`#RQ-hub-stats`);
+                    tabSTS.classList.add('hidden');
                     if (VARIABLES.settings.tracker.average_damage) {
-                        tab.classList.remove('hidden');
+                        tabSTS.classList.remove('hidden');
+                    }
+
+                    let tabDT = document.querySelector(`#RQ-hub-drop-tracker`);
+                    tabDT.classList.add('hidden');
+                    if (VARIABLES.settings.drop_tracker) {
+                        tabDT.classList.remove('hidden');
                     }
 
                     // event abbreviator
@@ -1221,12 +1331,167 @@
                     });
                 },
 
+                updateRandomDropsTemplate() {
+                    // console.log(VARIABLES.drop_tracker.random_drops);
+                    // console.log(VARIABLES.drop_tracker.stats_drops);
+                },
+                processRandomDrops(type, drop) {
+                    if (null === drop) {
+                        return false;
+                    }
+                    let multidropCount = 0;
+                    let plunderingCount = 0;
+                    let inventoryItemsCount = 0;
+                    let totalDrops = 0;
+                    let totals = {};
+                    drop.drop.split('<br/>')
+                        .map(i => {
+                            inventoryItemsCount += i.includes('itemWithTooltip') ? 1 : 0;
+                            plunderingCount += i.includes('[P]') ? 1 : 0;
+                            multidropCount += i.includes('[MD]') ? 1 : 0;
+                            let strips = [
+                                /<.*?>/g,
+                                /\[P]/ig,
+                                /\[MD]/ig,
+                                /You found an?/,
+                                / fame-based bonus/,
+                                '!',
+                                / as tax./,
+                                /(pouch|box|chest) containing /,
+                                /large pile of /,
+                                /.+, but a Trash Compactor ate it and spit out /,
+                                / instead./,
+                                /\([0-9, \+\-]+\)/,
+                                /\([a-z ]+\)/i,
+                                /,/g
+                            ];
+
+                            strips.forEach(r => {
+                                i = i.replace(r, '').trim();
+                            });
+                            if (!i.match(/^(\+|-)?[0-9]+[a-z\s]+$/i)) {
+                                console.log('imma ignore ya, but show me what u are');
+                                console.log(i);
+                                return null;
+                            }
+                            i = i.replace('Your clan took ', '-').trim();
+                            return i;
+                        })
+                        .map(i => {
+                            if (null === i) {
+                                return false;
+                            }
+                            let value = parseInt(i);
+                            if (isNaN(value)) {
+                                value = -1e20;
+                            }
+                            let key = i.match(/[a-z\s]+$/i);
+                            if (null === key) {
+                                key = `unprocessed key ${i}`;
+                                console.log('!!!', i);
+                                console.log(i);
+                                console.log('!!!');
+                            }
+                            key = key[0].trim().toLowerCase();
+                            if (!totals.hasOwnProperty(key)) {
+                                totals[key] = 0;
+                            }
+                            totalDrops++;
+                            if (value < 0) {
+                                totalDrops--;
+                            }
+                            totals[key] += value;
+                            return i;
+                        });
+
+                    for (let key in totals) {
+                        if (!totals.hasOwnProperty(key)) {
+                            continue;
+                        }
+                        if (!VARIABLES.drop_tracker.random_drops.hasOwnProperty(key)) {
+                            VARIABLES.drop_tracker.random_drops[key] = {};
+                        }
+                        if (!VARIABLES.drop_tracker.random_drops[key].hasOwnProperty(type)) {
+                            VARIABLES.drop_tracker.random_drops[key].battle = {t: 0, a: 0};
+                            VARIABLES.drop_tracker.random_drops[key].TS = {t: 0, a: 0};
+                            VARIABLES.drop_tracker.random_drops[key].craft = {t: 0, a: 0};
+                            VARIABLES.drop_tracker.random_drops[key].carve = {t: 0, a: 0};
+                        }
+                        VARIABLES.drop_tracker.random_drops[key][type].t += totals[key];
+                        VARIABLES.drop_tracker.random_drops[key][type].a++;
+                    }
+                    VARIABLES.drop_tracker.random_drops.total[type].t += totalDrops;
+                    VARIABLES.drop_tracker.random_drops.items[type].t += inventoryItemsCount;
+                    VARIABLES.drop_tracker.random_drops.items[type].a += inventoryItemsCount > 0 ? 1 : 0;
+                    VARIABLES.drop_tracker.random_drops.plundering[type].t += plunderingCount;
+                    VARIABLES.drop_tracker.random_drops.plundering[type].a += plunderingCount > 0 ? 1 : 0;
+                    VARIABLES.drop_tracker.random_drops.multi_drop[type].t += multidropCount;
+                    VARIABLES.drop_tracker.random_drops.multi_drop[type].a += multidropCount > 0 ? 1 : 0;
+                },
+
+                processStatsDrop(type, stat) {
+                    if (null === stat) {
+                        return false;
+                    }
+                    let totalCount = 0;
+                    let normalCount = 0;
+                    let growthCount = 0;
+                    for (let section in stat.stats) {
+                        if (!stat.stats.hasOwnProperty(section)) {
+                            continue;
+                        }
+                        let stats = stat.stats[section];
+                        if (['stat_boost', 'normal'].indexOf(section) === -1) {
+                            console.log(`UNKNOWN STAT SECTION ${section}!`);
+                            console.log(stat);
+                            continue;
+                        }
+                        normalCount += section === 'normal' ? Object.keys(stats).length : 0;
+                        growthCount += section === 'stat_boost' ? Object.keys(stats).length : 0;
+                        totalCount += normalCount + growthCount;
+                        for (let stat in stats) {
+                            if (!stats.hasOwnProperty(stat)) {
+                                continue;
+                            }
+                            if (!VARIABLES.drop_tracker.stats_drops.hasOwnProperty(stat)) {
+                                VARIABLES.drop_tracker.stats_drops[stat] = {};
+                            }
+                            if (!VARIABLES.drop_tracker.stats_drops[stat].hasOwnProperty(type)) {
+                                VARIABLES.drop_tracker.stats_drops[stat].battle = {t: 0, a: 0};
+                                VARIABLES.drop_tracker.stats_drops[stat].TS = {t: 0, a: 0};
+                                VARIABLES.drop_tracker.stats_drops[stat].craft = {t: 0, a: 0};
+                                VARIABLES.drop_tracker.stats_drops[stat].carve = {t: 0, a: 0};
+                            }
+                            VARIABLES.drop_tracker.stats_drops[stat][type].t += stats[stat];
+                            VARIABLES.drop_tracker.stats_drops[stat][type].a++;
+                        }
+                    }
+                    VARIABLES.drop_tracker.stats_drops.total[type].t += totalCount;
+                    VARIABLES.drop_tracker.stats_drops.growth[type].t += growthCount;
+                    VARIABLES.drop_tracker.stats_drops.growth[type].a += growthCount > 0 ? 1 : 0;
+                },
+
+                processDrops(type, record) {
+                    if (!VARIABLES.settings.drop_tracker) {
+                        return false;
+                    }
+                    VARIABLES.drop_tracker.actions[type]++;
+
+                    fn.__.processRandomDrops(type, record.hasOwnProperty('dr') ? record.dr : null);
+                    fn.__.processStatsDrop(type, record.hasOwnProperty('sr') ? record.sr : null);
+                    if (record.ir) {
+                        console.log(JSON.stringify(record.ir, null, '\t'));
+                    }
+                    fn.__.updateRandomDropsTemplate();
+                },
+
                 startup() {
                     return {
                         'Starting save worker ..': fn.__.setupWorkers,
                         'Setting up styles ..': fn.__.setupCSS,
                         'Setting up templates ..': fn.__.setupTemplates,
                         'Setting up HTML ..': fn.__.setupHTML,
+                        'Setting up Vue ???': fn.__.setupVue,
                         'Setting up variables ..': fn.__.setupVariables,
                         'Setting up observers ..': fn.__.setupObservers,
                         'Loading settings ..': fn.__.loadSettings,
@@ -1318,6 +1583,7 @@
                                 VARIABLES.QoLStats.e.LevelETA.text(eta);
                             }
                             fn.__.logAvgDmg(data);
+                            fn.__.processDrops('battle', data.b);
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
 
@@ -1353,6 +1619,7 @@
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
+                            fn.__.processDrops('TS', data.a);
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
                         fn.helpers.updateStats('TS', data.a);
@@ -1382,6 +1649,7 @@
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
+                            fn.__.processDrops('craft', data.a);
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
                         fn.helpers.updateStats('Crafting', data.a);
@@ -1411,6 +1679,7 @@
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
+                            fn.__.processDrops('carve', data.a);
                         }
                         VARIABLES.QoLStats.na = data.p.next_action;
                         fn.helpers.updateStats('Carving', data.a);
@@ -1524,8 +1793,6 @@
 
                     let message = `<li>[${moment.tz(GAME_TIME_ZONE).format('HH:mm:ss')}] <span class="chat_notification">Your Platinum to Event Points ratio was ~${ratio.toFixed(5)}. (${ep.format()}/${plat.format()}/${ratio.toFixed(5)})</span> </li>`;
                     fn.helpers.addMessageToChat(message);
-                    console.log(VARIABLES.settings.event_ratio_chat_prepare);
-                    console.log(document.querySelector('#chatMessage').textContent);
                     if (true === VARIABLES.settings.event_ratio_chat_prepare && document.querySelector('#chatMessage').textContent === '') {
                         document.querySelector('#chatMessage').textContent = `${ep.format()}/${plat.format()}/${ratio.toFixed(5)}`;
                     }
@@ -1703,6 +1970,10 @@
 
     $(document).on('click', '#RQ-hub-dashboard', function () {
         QoL.hubShowSection('dashboard');
+    });
+
+    $(document).on('click', '#RQ-hub-drop-tracker', function () {
+        QoL.hubShowSection('drop-tracker');
     });
 
     $(document).on('click', '#clearBattleStats', function () {
