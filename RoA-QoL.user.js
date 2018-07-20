@@ -149,11 +149,10 @@
                 roomNameMap: {},
             },
             hub: {
-                tab: '',
+                tab: 'dashboard',
                 subtab: 'platinum',
             },
             trackerHistoryThreshold: moment.tz(GAME_TIME_ZONE).subtract(10, 'days').format('YYYY-MM-DD 00:00:00'),
-
 
             drop_tracker: {
                 trackerStart: moment.tz(GAME_TIME_ZONE).format('Do MMM Y HH:mm:ss'),
@@ -860,12 +859,16 @@
             <div class="row">
                 <div class="col-xs-12">
                     <div id="rq-dt-table">
+                        <div class="text-center">Tracked since: {{ drop_tracker.trackerStart }}</div>
                         <table class="table table-condensed table-bordered rq-styled">
-                            <caption class="text-center">Tracked since: {{ drop_tracker.trackerStart }}</caption>
+                            
                             <thead>
                                 <tr>
-                                    <th></th>
-                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="2">{{ category.ucWords() }}: {{ actions }}</th>
+                                    <th><button class="btn btn-xs" @click="resetDropTracker()">reset everything</button></th>
+                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="2">
+                                    {{ category.ucWords() }}: {{ actions }}
+                                    <button class="btn btn-xs" @click="resetCategory(category)">reset</button>
+                                    </th>
                                     <th class="text-right">Total</th>
                                 </tr>
                                 <tr><th class="text-center" colspan="10">Drops</th></tr>
@@ -874,13 +877,13 @@
                                 <tr v-for="(categories, item) in drop_tracker.random_drops" :class="colorClassFor(item)">
                                     <td width="30%">{{ item.split('_').join(' ').ucWords() }}</td>
                                     <td class="text-right" width="7%" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'text-muted':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="9%" :class="{'small':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
                                     <td class="text-right" width="7%" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'text-muted':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="9%" :class="{'small':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
                                     <td class="text-right" width="7%" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'text-muted':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="9%" :class="{'small':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
                                     <td class="text-right" width="7%" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'text-muted':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="9%" :class="{'small':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
                                     <th class="text-right" width="7%" :title="getTotal('random_drops', item).format()">{{ getTotal('random_drops', item).abbr() }}</th>
                                 </tr>
                             </tbody>
@@ -891,13 +894,13 @@
                                 <tr v-for="(categories, item) in drop_tracker.stats_drops" :class="colorClassFor(item)">
                                     <td>{{ item.split('_').join(' ').ucWords() }}</td>
                                     <td class="text-right" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'text-muted':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :class="{'small':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
                                     <td class="text-right" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'text-muted':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :class="{'small':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
                                     <td class="text-right" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'text-muted':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :class="{'small':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
                                     <td class="text-right" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'text-muted':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" :class="{'small':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
                                     <th class="text-right" :title="getTotal('stats_drops', item).format()">{{ getTotal('stats_drops', item).abbr() }}</th>
                                 </tr>
                             </tbody>
@@ -939,6 +942,41 @@
                                     'sapphire': item === 'coordination',
                                     'emerald': item === 'agility',
                                 };
+                            },
+                            resetCategory(category) {
+                                if (this.drop_tracker.actions.hasOwnProperty(category)) {
+                                    this.drop_tracker.actions[category] = 0;
+                                }
+                                for (let section of ['random_drops', 'stats_drops']) {
+                                    if (!this.drop_tracker.hasOwnProperty(section)) {
+                                        console.log(`no section ${section}`);
+                                        continue;
+                                    }
+                                    for (let item in this.drop_tracker[section]) {
+                                        if (!this.drop_tracker[section].hasOwnProperty(item)) {
+                                            console.log(`no item ${item} in section ${section}`);
+                                            continue;
+                                        }
+                                        if (!this.drop_tracker[section][item].hasOwnProperty(category)) {
+                                            console.log(`no category ${category} in item ${item} in secton ${section}`);
+                                            continue;
+                                        }
+                                        if (null !== this.drop_tracker[section][item][category].a) {
+                                            this.drop_tracker[section][item][category] = {t:0,a:0};
+                                        } else {
+                                            this.drop_tracker[section][item][category].t = 0;
+                                        }
+                                    }
+                                }
+                            },
+                            resetDropTracker() {
+                                for (let category in this.drop_tracker.actions) {
+                                    if (!this.drop_tracker.actions.hasOwnProperty(category)) {
+                                        continue;
+                                    }
+                                    this.resetCategory(category);
+                                }
+                                this.drop_tracker.trackerStart = moment.tz(GAME_TIME_ZONE).format('Do MMM Y HH:mm:ss');
                             }
                         }
                     });
@@ -1710,7 +1748,12 @@
                     $('#RQ-hub-wrapper').hide();
                     fn.helpers.hubToggleTo();
                 },
-                hubShowSection(main, sub = null) {
+                hubShowSection(main, sub = null, force = true) {
+                    if (false === force && 0 !== VARIABLES.hub.tab.length) {
+                        main = VARIABLES.hub.tab;
+                    } else {
+                        VARIABLES.hub.tab = main;
+                    }
                     fn.helpers.hubToggleTo(`#RQ-hub-${main}-wrapper`);
                     switch (main) {
                         case 'charts':
@@ -1940,7 +1983,7 @@
     $(document).on('click', '#RoA-QoL-open-hub', function () {
         $('#modalTitle').text('RoA-QoL - HUB');
         $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
-        QoL.hubShowSection('dashboard');
+        QoL.hubShowSection('dashboard', null, false);
     });
 
     $(document).on('click', '#modalBackground, .closeModal', function () {
