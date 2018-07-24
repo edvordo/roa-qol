@@ -1829,8 +1829,8 @@
                     }
                     let [_, ep, plat] = rewardMessage.match(VARIABLES.eventRewardsRegex);
 
-                    ep = parseInt(ep.replace(',', ''));
-                    plat = parseInt(plat.replace(',', ''));
+                    ep = parseInt(ep.replace(/,/g, ''));
+                    plat = parseInt(plat.replace(/,/g, ''));
 
                     let ratio = plat / ep;
 
