@@ -772,12 +772,16 @@
                     chartsTabsTmpl += `</ul></li>`;
 
                     TEMPLATES.hubHTML = `<div id="RQ-hub-wrapper" style="display:none">
-        <div class="btn-group">
-            <button type="button" class="btn btn-primary" id="RQ-hub-dashboard">Dashboard</button>
-            <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
-            <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
-            <button type="button" class="btn btn-primary" id="RQ-hub-drop-tracker">Drop tracker</button>
-            <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" id="RQ-hub-dashboard">Dashboard</button>
+                    <button type="button" class="btn btn-primary" id="RQ-hub-charts">Charts</button>
+                    <button type="button" class="btn btn-primary" id="RQ-hub-stats">Stats</button>
+                    <button type="button" class="btn btn-primary" id="RQ-hub-drop-tracker">Drop tracker</button>
+                    <button type="button" class="btn btn-primary" id="RQ-hub-settings">Settings</button>
+                </div>
+            </div>
         </div>
         <hr>
         <div id="RQ-hub-sections">
@@ -790,7 +794,7 @@
                     </div>
                     <div class="col-md-4">
                         <h4 class="text-center">Overview</h4>
-                        <table class="table table-condensed rq-styled">
+                        <table class="table table-condensed rq-styled small">
                             <tr>
                                 <td>Script version</td>
                                 <td class="text-right">${GM_info.script.version}</td>
@@ -860,47 +864,54 @@
                 <div class="col-xs-12">
                     <div id="rq-dt-table">
                         <div class="text-center">Tracked since: {{ drop_tracker.trackerStart }}</div>
-                        <table class="table table-condensed table-bordered rq-styled">
-                            
+                        <table class="table table-condensed table-bordered rq-styled small">
                             <thead>
                                 <tr>
                                     <th><button class="btn btn-xs" @click="resetDropTracker()">reset everything</button></th>
-                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="2">
-                                    {{ category.ucWords() }}: {{ actions }}
+                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="3">
+                                    {{ category.ucWords() }}: {{ actions.format() }}
                                     <button class="btn btn-xs" @click="resetCategory(category)">reset</button>
                                     </th>
                                     <th class="text-right">Total</th>
                                 </tr>
-                                <tr><th class="text-center" colspan="10">Drops</th></tr>
+                                <tr><th class="text-center" colspan="14">Drops</th></tr>
                             </thead>
                             <tbody>
                                 <tr v-for="(categories, item) in drop_tracker.random_drops" :class="colorClassFor(item)">
-                                    <td width="30%">{{ item.split('_').join(' ').ucWords() }}</td>
+                                    <td width="20%">{{ item.split('_').join(' ').ucWords() }}</td>
                                     <td class="text-right" width="7%" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'small':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'battle') }}</td>
                                     <td class="text-right" width="7%" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'small':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'TS') }}</td>
                                     <td class="text-right" width="7%" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'small':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'craft') }}</td>
                                     <td class="text-right" width="7%" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
-                                    <td class="text-right" width="9%" :class="{'small':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="7%">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'carve') }}</td>
                                     <th class="text-right" width="7%" :title="getTotal('random_drops', item).format()">{{ getTotal('random_drops', item).abbr() }}</th>
                                 </tr>
                             </tbody>
                             <thead>
-                                <tr><th class="text-center" colspan="10">Stats</th></tr>
+                                <tr><th class="text-center" colspan="14">Stats</th></tr>
                             </thead>
                             <tbody>
                                 <tr v-for="(categories, item) in drop_tracker.stats_drops" :class="colorClassFor(item)">
                                     <td>{{ item.split('_').join(' ').ucWords() }}</td>
                                     <td class="text-right" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'small':categories.battle.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'battle') }}</td>
                                     <td class="text-right" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'small':categories.TS.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'TS') }}</td>
                                     <td class="text-right" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'small':categories.craft.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'craft') }}</td>
                                     <td class="text-right" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
-                                    <td class="text-right" :class="{'small':categories.carve.a === null}" style="border-right-color: var(--border-color-bright);">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'carve') }}</td>
                                     <th class="text-right" :title="getTotal('stats_drops', item).format()">{{ getTotal('stats_drops', item).abbr() }}</th>
                                 </tr>
                             </tbody>
@@ -977,6 +988,30 @@
                                     this.resetCategory(category);
                                 }
                                 this.drop_tracker.trackerStart = moment.tz(GAME_TIME_ZONE).format('Do MMM Y HH:mm:ss');
+                            },
+                            dropRate(section, item, type) {
+                                if (!this.drop_tracker.hasOwnProperty(section)) {
+                                    return '';
+                                }
+                                if (!this.drop_tracker[section].hasOwnProperty(item)) {
+                                    return '';
+                                }
+                                if (!this.drop_tracker[section][item].hasOwnProperty(type)) {
+                                    return '';
+                                }
+                                let data = this.drop_tracker[section][item][type];
+                                let lookAtTotal = ['plundering', 'multi_drop', 'items', 'growth'];
+                                let base = data.a ? data.a : data.t;
+                                if (lookAtTotal.indexOf(item) !== -1 || section === 'stats_drops') {
+                                    base = data.t;
+                                }
+
+                                let dropRate = ((base / this.drop_tracker.actions[type]) * 100);
+                                if (isNaN(dropRate)) {
+                                    return '-';
+                                }
+
+                                return dropRate.format(2) + '%';
                             }
                         }
                     });
@@ -1983,7 +2018,7 @@
     $(document).on('click', '#RoA-QoL-open-hub', function () {
         $('#modalTitle').text('RoA-QoL - HUB');
         $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
-        QoL.hubShowSection('dashboard', null, false);
+        QoL.hubShowSection('dashboard', null, this.classList.contains('qol-update-ready'));
     });
 
     $(document).on('click', '#modalBackground, .closeModal', function () {
