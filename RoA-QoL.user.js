@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.2.0-beta
+// @version      2.2.0-beta1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -960,16 +960,13 @@
                                 }
                                 for (let section of ['random_drops', 'stats_drops']) {
                                     if (!this.drop_tracker.hasOwnProperty(section)) {
-                                        console.log(`no section ${section}`);
                                         continue;
                                     }
                                     for (let item in this.drop_tracker[section]) {
                                         if (!this.drop_tracker[section].hasOwnProperty(item)) {
-                                            console.log(`no item ${item} in section ${section}`);
                                             continue;
                                         }
                                         if (!this.drop_tracker[section][item].hasOwnProperty(category)) {
-                                            console.log(`no category ${category} in item ${item} in secton ${section}`);
                                             continue;
                                         }
                                         if (null !== this.drop_tracker[section][item][category].a) {
@@ -1404,10 +1401,6 @@
                     });
                 },
 
-                updateRandomDropsTemplate() {
-                    // console.log(VARIABLES.drop_tracker.random_drops);
-                    // console.log(VARIABLES.drop_tracker.stats_drops);
-                },
                 processRandomDrops(type, drop) {
                     if (null === drop) {
                         return false;
@@ -1461,9 +1454,6 @@
                             let key = i.match(/[a-z\s]+$/i);
                             if (null === key) {
                                 key = `unprocessed key ${i}`;
-                                console.log('!!!', i);
-                                console.log(i);
-                                console.log('!!!');
                             }
                             key = key[0].trim().toLowerCase();
                             if (!totals.hasOwnProperty(key)) {
@@ -1515,8 +1505,6 @@
                         }
                         let stats = stat.stats[section];
                         if (['stat_boost', 'normal'].indexOf(section) === -1) {
-                            console.log(`UNKNOWN STAT SECTION ${section}!`);
-                            console.log(stat);
                             continue;
                         }
                         normalCount += section === 'normal' ? Object.keys(stats).length : 0;
@@ -1553,9 +1541,8 @@
                     fn.__.processRandomDrops(type, record.hasOwnProperty('dr') ? record.dr : null);
                     fn.__.processStatsDrop(type, record.hasOwnProperty('sr') ? record.sr : null);
                     if (record.ir) {
-                        console.log(JSON.stringify(record.ir, null, '\t'));
+                        // console.log(JSON.stringify(record.ir, null, '\t')); // will take care of later
                     }
-                    fn.__.updateRandomDropsTemplate();
                 },
 
                 startup() {
