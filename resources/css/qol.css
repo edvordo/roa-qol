@@ -132,3 +132,7 @@ details.qol-new-log {
 #allThemTables > tbody > tr > td {
     width: calc(100% / 6);
 }
+
+.dt-section-divider {
+    border-right-color: var(--border-color-bright);
+}
