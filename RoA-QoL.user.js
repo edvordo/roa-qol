@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.2.0-beta1
+// @version      2.2.0-rc1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180712
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css?rev=180726
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180717
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180719
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=180726
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180718-746
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -63,6 +63,7 @@
             set_max_quest_reward: true,
             clan_donations_modes: true,
             drop_tracker: true,
+            chat_content_swap: false,
             tracker: {
                 fame: true,
                 crystals: true,
@@ -526,6 +527,20 @@
                         fn.helpers.scrollToBottom('#chatMessageListWrapper');
                     }
                 },
+                chatContentSwap(fromLoad) {
+                    let navWrapper = document.querySelector('#navWrapper');
+                    let contentWrapper = document.querySelector('#contentWrapper');
+                    let chatWrapper = document.querySelector('#chatWrapper');
+                    if (VARIABLES.settings.chat_content_swap) {
+                        // swap
+                        chatWrapper.insertAdjacentElement('afterend', contentWrapper);
+                        navWrapper.insertAdjacentElement('afterend', chatWrapper);
+                    } else if (false === fromLoad) {
+                        // revert
+                        contentWrapper.insertAdjacentElement('afterend', chatWrapper);
+                        navWrapper.insertAdjacentElement('afterend', contentWrapper);
+                    }
+                }
             },
             /** private / internal / helper methods */
             __: {
@@ -729,6 +744,7 @@
                     $('#RQ-hub-stats-avg-dmg-data').DataTable({searching: false, ordering: false});
 
                     document.querySelector('#myClanDonationWrapper').insertAdjacentHTML('afterbegin', TEMPLATES.clanDonationsModeSelector);
+                    document.querySelector('#chatSendMessage').classList.add('btn-block');
                 },
                 setupTemplates() {
                     let chartsContentTmpl = '';
@@ -881,16 +897,16 @@
                                     <td width="20%">{{ item.split('_').join(' ').ucWords() }}</td>
                                     <td class="text-right" width="7%" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
                                     <td class="text-right" width="7%">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'battle') }}</td>
+                                    <td class="text-right dt-section-divider" width="4%" title="Drop rate %">{{ dropRate('random_drops', item, 'battle') }}</td>
                                     <td class="text-right" width="7%" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
                                     <td class="text-right" width="7%">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'TS') }}</td>
+                                    <td class="text-right dt-section-divider" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'TS') }}</td>
                                     <td class="text-right" width="7%" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
                                     <td class="text-right" width="7%">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'craft') }}</td>
+                                    <td class="text-right dt-section-divider" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'craft') }}</td>
                                     <td class="text-right" width="7%" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
                                     <td class="text-right" width="7%">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" width="4%" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('random_drops', item, 'carve') }}</td>
+                                    <td class="text-right dt-section-divider" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'carve') }}</td>
                                     <th class="text-right" width="7%" :title="getTotal('random_drops', item).format()">{{ getTotal('random_drops', item).abbr() }}</th>
                                 </tr>
                             </tbody>
@@ -902,16 +918,16 @@
                                     <td>{{ item.split('_').join(' ').ucWords() }}</td>
                                     <td class="text-right" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
                                     <td class="text-right">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'battle') }}</td>
+                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'battle') }}</td>
                                     <td class="text-right" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
                                     <td class="text-right">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'TS') }}</td>
+                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'TS') }}</td>
                                     <td class="text-right" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
                                     <td class="text-right">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'craft') }}</td>
+                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'craft') }}</td>
                                     <td class="text-right" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
                                     <td class="text-right">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
-                                    <td class="text-right" style="border-right-color: var(--border-color-bright);" title="Drop rate %">{{ dropRate('stats_drops', item, 'carve') }}</td>
+                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'carve') }}</td>
                                     <th class="text-right" :title="getTotal('stats_drops', item).format()">{{ getTotal('stats_drops', item).abbr() }}</th>
                                 </tr>
                             </tbody>
@@ -925,7 +941,7 @@
 </div>`;
                 },
                 setupVue() {
-                    let el = new Vue({
+                    new Vue({
                         debug: true,
                         el: '#rq-dt-table',
                         data: VARIABLES,
@@ -1116,9 +1132,9 @@
                     }
                     fn.helpers.populateToSettingsTemplate();
                     fn.__.saveSettings();
-                    fn.__.applySettings();
+                    fn.__.applySettings(true);
                 },
-                applySettings() {
+                applySettings(fromLoad = false) {
                     // tracked stuff from fame to stats, except average damage vs. strength
                     for (let item of VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC)) {
                         if (!OBSERVERS.toggleable.hasOwnProperty(item)) {
@@ -1165,6 +1181,8 @@
                     } else {
                         document.querySelector('#RQ-clan-donation-mode-selector-wrapper').classList.add('hidden');
                     }
+
+                    fn.helpers.chatContentSwap(fromLoad);
                 },
                 processSettingChange(element, ...hierarchy) {
                     if (1 === hierarchy.length) {
@@ -1427,7 +1445,7 @@
                                 /large pile of /,
                                 /.+, but a Trash Compactor ate it and spit out /,
                                 / instead./,
-                                /\([0-9, \+\-]+\)/,
+                                /\([0-9, +\-]+\)/,
                                 /\([a-z ]+\)/i,
                                 /,/g
                             ];
