@@ -68,6 +68,10 @@ div#RQ-hub-wrapper table.rq-styled * {
     border-color: var(--border-color);
 }
 
+div#RQ-hub-wrapper table.rq-styled td.dt-section-divider {
+    border-right-color: var(--border-color-bright);
+}
+
 #RQ-dashboard-localstorage-state button.btn {
     text-align: left;
     clear: both;
@@ -131,8 +135,4 @@ details.qol-new-log {
 
 #allThemTables > tbody > tr > td {
     width: calc(100% / 6);
-}
-
-.dt-section-divider {
-    border-right-color: var(--border-color-bright);
 }
