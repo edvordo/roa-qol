@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.2.0-rc1
+// @version      2.2.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css?rev=180726
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180726
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180717
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=180726
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180726
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180718-746
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -1453,9 +1453,9 @@
                             strips.forEach(r => {
                                 i = i.replace(r, '').trim();
                             });
-                            if (!i.match(/^(\+|-)?[0-9]+[a-z\s]+$/i)) {
-                                console.log('imma ignore ya, but show me what u are');
-                                console.log(i);
+                            if (!i.match(/^(\+|-)?[0-9]+[a-z\s]+$/i)) { // theese are items (gear & gems)
+                                // console.log('imma ignore ya, but show me what u are');
+                                // console.log(i);
                                 return null;
                             }
                             i = i.replace('Your clan took ', '-').trim();
