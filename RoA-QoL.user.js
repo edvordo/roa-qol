@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.2.0
+// @version      2.3.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -11,10 +11,10 @@
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180717
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180726
-// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180718-746
-// @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180730
+// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
+// @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
 // @require      https://cdn.rawgit.com/nodeca/pako/1.0.6/dist/pako.min.js
 // @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
 // @require      https://cdn.rawgit.com/markdown-it/markdown-it/8.4.1/dist/markdown-it.min.js
@@ -64,6 +64,8 @@
             clan_donations_modes: true,
             drop_tracker: true,
             chat_content_swap: false,
+            user_color_messages: true,
+            user_color_set: {},
             tracker: {
                 fame: true,
                 crystals: true,
@@ -159,13 +161,23 @@
                 trackerStart: moment.tz(GAME_TIME_ZONE).format('Do MMM Y HH:mm:ss'),
                 actions: {battle: 0, TS: 0, craft: 0, carve: 0},
                 random_drops: {
-                    total: {battle: {t: 0, a: null}, TS: {t: 0, a: null}, craft: {t: 0, a: null}, carve: {t: 0, a: null}},
+                    total: {
+                        battle: {t: 0, a: null},
+                        TS: {t: 0, a: null},
+                        craft: {t: 0, a: null},
+                        carve: {t: 0, a: null}
+                    },
                     plundering: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
                     multi_drop: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
                     items: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}}
                 },
                 stats_drops: {
-                    total: {battle: {t: 0, a: null},TS: {t: 0, a: null},craft: {t: 0, a: null},carve: {t: 0, a: null}},
+                    total: {
+                        battle: {t: 0, a: null},
+                        TS: {t: 0, a: null},
+                        craft: {t: 0, a: null},
+                        carve: {t: 0, a: null}
+                    },
                     growth: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
                 }
             },
@@ -192,7 +204,8 @@
             <span class="input-group-btn"><button type="button" class="btn btn-primary" style="margin-top: 0;" id="RQ-donation-table-loaded"></button></span>
         </div>
     </div>
-</div>`
+</div>`,
+            profileTooltipUserColor: `<span class="RQ-user-color-option"> · </span><a class="RQ-user-color-option" id="RQ-user-color-set">Colori[z]e</a>`
         };
 
         const OBSERVERS = {
@@ -348,9 +361,20 @@
                         }
                     });
                     o.observe(document.querySelector('#gauntletText'), {childList: true});
-                    // o.disconnect();
+                    o.disconnect();//
                     return o;
                 },
+                chatMessagesObserver() {
+                    let o = new MutationObserver(mutationList => {
+                        mutationList.forEach(mutation => {
+                            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                                fn.__.dyeUserMessage(mutation.addedNodes[0]);
+                            }
+                        });
+                    });
+                    o.observe(document.querySelector('#chatMessageList'), {childList: true});
+                    return o;
+                }
             },
             general: {
                 fameOwnGemsObserver: new MutationObserver(
@@ -383,6 +407,9 @@
                         }
                     }
                 ),
+                splicingMenuGemsPicker: new MutationObserver(_.debounce(function () {
+                    document.querySelectorAll('#carve_splice_secondary option').forEach(fn.helpers.colorGemOption);
+                }, 100))
             },
         };
 
@@ -406,7 +433,7 @@
                         }
                     });
                     o.observe(document.querySelector(selector), {attributes: true, attributeOldValue: true});
-                    // o.disconnect();
+                    o.disconnect();
                     return o;
                 },
                 togglePerHourSection(section) {
@@ -527,19 +554,36 @@
                         fn.helpers.scrollToBottom('#chatMessageListWrapper');
                     }
                 },
-                chatContentSwap(fromLoad) {
+                chatContentSwap() {
                     let navWrapper = document.querySelector('#navWrapper');
                     let contentWrapper = document.querySelector('#contentWrapper');
                     let chatWrapper = document.querySelector('#chatWrapper');
-                    if (VARIABLES.settings.chat_content_swap) {
+                    if (VARIABLES.settings.chat_content_swap && navWrapper.nextElementSibling.getAttribute('id') === 'contentWrapper') {
                         // swap
                         chatWrapper.insertAdjacentElement('afterend', contentWrapper);
                         navWrapper.insertAdjacentElement('afterend', chatWrapper);
-                    } else if (false === fromLoad) {
+                        return;
+                    }
+
+                    if (!VARIABLES.settings.chat_content_swap && navWrapper.nextElementSibling.getAttribute('id') === 'chatWrapper') {
                         // revert
                         contentWrapper.insertAdjacentElement('afterend', chatWrapper);
                         navWrapper.insertAdjacentElement('afterend', contentWrapper);
                     }
+                },
+                colorGemOption(option) {
+                    if (option.tagName !== 'OPTION') {
+                        return;
+                    }
+                    if (!option.getAttribute('value')) {
+                        return;
+                    }
+                    let className = option.textContent.match(/(ruby|opal|sapphire|emerald)/i);
+                    if (!className) {
+                        return;
+                    }
+                    className = className[1].toLowerCase();
+                    option.classList.add(className);
                 }
             },
             /** private / internal / helper methods */
@@ -727,6 +771,7 @@
                     OBSERVERS.toggleable.coordination = fn.helpers.initObserver('coordination', 'data-base', 'td#coordination');
                     OBSERVERS.toggleable.agility = fn.helpers.initObserver('agility', 'data-base', 'td#agility');
                     OBSERVERS.toggleable.eventAbbreviator = OBSERVERS.toggleable.eventAbbreviator();
+                    OBSERVERS.toggleable.chatMessagesObserver = OBSERVERS.toggleable.chatMessagesObserver();
                 },
 
                 setupCSS() {
@@ -745,6 +790,7 @@
 
                     document.querySelector('#myClanDonationWrapper').insertAdjacentHTML('afterbegin', TEMPLATES.clanDonationsModeSelector);
                     document.querySelector('#chatSendMessage').classList.add('btn-block');
+                    document.querySelector('#profileOptionTooltip').insertAdjacentHTML('beforeend', TEMPLATES.profileTooltipUserColor);
                 },
                 setupTemplates() {
                     let chartsContentTmpl = '';
@@ -986,7 +1032,7 @@
                                             continue;
                                         }
                                         if (null !== this.drop_tracker[section][item][category].a) {
-                                            this.drop_tracker[section][item][category] = {t:0,a:0};
+                                            this.drop_tracker[section][item][category] = {t: 0, a: 0};
                                         } else {
                                             this.drop_tracker[section][item][category].t = 0;
                                         }
@@ -1134,7 +1180,7 @@
                     fn.__.saveSettings();
                     fn.__.applySettings(true);
                 },
-                applySettings(fromLoad = false) {
+                applySettings() {
                     // tracked stuff from fame to stats, except average damage vs. strength
                     for (let item of VARIABLES.tracked.stuffLC.concat(VARIABLES.tracked.stuffDDLC)) {
                         if (!OBSERVERS.toggleable.hasOwnProperty(item)) {
@@ -1182,7 +1228,16 @@
                         document.querySelector('#RQ-clan-donation-mode-selector-wrapper').classList.add('hidden');
                     }
 
-                    fn.helpers.chatContentSwap(fromLoad);
+                    fn.helpers.chatContentSwap();
+
+                    document.querySelectorAll('.RQ-user-color-option').forEach(el => {
+                        if (VARIABLES.settings.user_color_messages) {
+                            el.classList.remove('hidden');
+                        } else {
+                            el.classList.add('hidden');
+                        }
+                    });
+                    fn.__.dyeUserMessages();
                 },
                 processSettingChange(element, ...hierarchy) {
                     if (1 === hierarchy.length) {
@@ -1560,6 +1615,37 @@
                     fn.__.processStatsDrop(type, record.hasOwnProperty('sr') ? record.sr : null);
                     if (record.ir) {
                         // console.log(JSON.stringify(record.ir, null, '\t')); // will take care of later
+                    }
+                },
+
+                dyeUserMessages() {
+                    document.querySelectorAll('#chatMessageList > li').forEach(li => {
+                        fn.__.dyeUserMessage(li);
+                    });
+                },
+                dyeUserMessage(element) {
+                    let usernameElement = element.querySelector('a.profileLink');
+                    if (!usernameElement) {
+                        return;
+                    }
+                    let username = usernameElement.textContent;
+                    let color = null;
+                    if (VARIABLES.settings.user_color_set.hasOwnProperty(username) && true === VARIABLES.settings.user_color_messages) {
+                        color = VARIABLES.settings.user_color_set[username];
+                    }
+
+                    let message = usernameElement.nextElementSibling;
+                    if (!message || message.classList.value.length > 0 || message.style.color === '') {
+                        message = usernameElement.parentElement;
+                    }
+                    if (!message.hasAttribute('data-original-color') && color !== null) {
+                        message.setAttribute('data-original-color', message.style.color.ensureHEXColor());
+                    }
+                    let originalColor = message.getAttribute('data-original-color');
+                    if (null !== color) {
+                        message.style.color = color;
+                    } else if (originalColor) {
+                        message.style.color = `#${originalColor}`;
                     }
                 },
 
@@ -1947,7 +2033,56 @@
                     document.querySelectorAll(`#myClanDonationTable td[data-${mode}]`).forEach(e => {
                         e.textContent = e.getAttribute(`data-${mode}`);
                     });
-                }
+                },
+
+                improveGemSplicingMenu() {
+                    OBSERVERS.general.splicingMenuGemsPicker.disconnect();
+                    setTimeout(() => {
+                        document.querySelectorAll('#carve_splice_primary option').forEach(fn.helpers.colorGemOption);
+                        OBSERVERS.general.splicingMenuGemsPicker.observe(document.querySelector('#carve_splice_secondary'), {childList: true});
+                    }, 1000);
+                },
+                showUserColorizePrompt() {
+                    if (!VARIABLES.settings.user_color_messages) {
+                        return;
+                    }
+                    let username = document.querySelector('#profileOptionUsername').textContent;
+                    if (!username) {
+                        return;
+                    }
+                    let color = VARIABLES.settings.user_color_set.hasOwnProperty(username) ? VARIABLES.settings.user_color_set[username] : '';
+                    let unset = !VARIABLES.settings.user_color_set.hasOwnProperty(username) ? ' hidden' : '';
+                    $.confirm({
+                        title: `Set a custom color for ${username}`,
+                        message: `<input class="form-control" type="color" value="${color}" id="RQ-user-color">`,
+                        buttons: {
+                            Confirm: {
+                                'class': 'green',
+                                action: function () {
+                                    VARIABLES.settings.user_color_set[username] = document.querySelector('#RQ-user-color').value;
+                                    fn.__.saveSettings();
+                                    fn.__.applySettings();
+                                }
+                            },
+                            Unset: {
+                                'class': `red${unset}`,
+                                action: function () {
+                                    if (!VARIABLES.settings.user_color_set.hasOwnProperty(username)) {
+                                        return;
+                                    }
+                                    delete VARIABLES.settings.user_color_set[username];
+                                    fn.__.saveSettings();
+                                    fn.__.applySettings();
+                                }
+                            },
+                            Cancel: {
+                                'class': 'red',
+                                action: function () {
+                                }
+                            }
+                        }
+                    });
+                },
             },
         };
 
@@ -2116,6 +2251,16 @@
 
     $(document).on('change', '#RQ-clan-donation-mode-selector', function () {
         QoL.toggleClanDonationsTableMode(this.value);
+    });
+
+    $(document).on('roa-ws:page:house_room_item roa-ws:page:carve_gem', function (e, data) {
+        if (data.item.room_type === 22 && data.item.item_type === 101) {
+            QoL.improveGemSplicingMenu();
+        }
+    });
+
+    $(document).on('click', '#RQ-user-color-set', function () {
+        QoL.showUserColorizePrompt();
     });
 
 })(window, jQuery);

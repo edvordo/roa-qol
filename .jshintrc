@@ -5,10 +5,7 @@
     "GM_info": true,
     "GM_addStyle": true,
     "GM_getResourceText": true,
-    "_": {
-      "isPlainObject": true,
-      "defaultDeep": true
-    }
+    "_": true
   },
   "strict": true
 }

@@ -21,7 +21,8 @@ Also, an install into a Tampermonkey/Greasemonkey is kinda recommended, since th
 * [Daily overview of changes to 14 resources](https://i.imgur.com/8YBL00m.png)
 * Auto-set max crystal reward when turning in quest
 * [Drop tracker](https://i.imgur.com/wUaQeLx.png)
-* [chat/action window swap](https://i.imgur.com/uXYTKb1.png)
+* [Chat/action window swap](https://i.imgur.com/uXYTKb1.png)
+* [User messageges colorizing](https://i.imgur.com/jGwW9Ad.png)
 
 ## Special thanks
 
