@@ -28,6 +28,22 @@ if (typeof String.prototype.ucWords !== 'function') {
     };
 }
 
+if (typeof String.prototype.ensureHEXColor !== 'function') {
+    String.prototype.ensureHEXColor = function() {
+        'use strict';
+        let val = this.toString();
+        if (val.match(/^#[0-9a-f]+$/i)) {
+            return val;
+        }
+        let isRGB = val.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\);?$/);
+        if (isRGB) {
+            return isRGB.slice(1).map(i => parseInt(i).toString(16)).map(i => i.length === 1 ? `0${i}` : i).join('');
+        }
+        // hsl?
+        return val;
+    };
+}
+
 if (typeof Number.prototype.format !== 'function') {
     Number.prototype.format = function (deciamalPaces, numbersInGroup) {
         'use strict';
