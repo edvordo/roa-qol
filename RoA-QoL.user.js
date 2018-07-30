@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.3.0
+// @version      2.3.1-beta
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -930,51 +930,53 @@
                             <thead>
                                 <tr>
                                     <th><button class="btn btn-xs" @click="resetDropTracker()">reset everything</button></th>
-                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="3">
+                                    <th v-for="(actions, category) in drop_tracker.actions" class="text-right" colspan="3"  v-if="actions > 0">
                                     {{ category.ucWords() }}: {{ actions.format() }}
                                     <button class="btn btn-xs" @click="resetCategory(category)">reset</button>
                                     </th>
                                     <th class="text-right">Total</th>
                                 </tr>
-                                <tr><th class="text-center" colspan="14">Drops</th></tr>
+                                <tr><th class="text-center" colspan="15">Drops</th></tr>
                             </thead>
                             <tbody>
                                 <tr v-for="(categories, item) in drop_tracker.random_drops" :class="colorClassFor(item)">
                                     <td width="20%">{{ item.split('_').join(' ').ucWords() }}</td>
-                                    <td class="text-right" width="7%" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
-                                    <td class="text-right" width="7%">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" width="4%" title="Drop rate %">{{ dropRate('random_drops', item, 'battle') }}</td>
-                                    <td class="text-right" width="7%" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
-                                    <td class="text-right" width="7%">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'TS') }}</td>
-                                    <td class="text-right" width="7%" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
-                                    <td class="text-right" width="7%">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'craft') }}</td>
-                                    <td class="text-right" width="7%" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
-                                    <td class="text-right" width="7%">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'carve') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.battle > 0" width="7%" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.battle > 0" width="7%">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.battle > 0" width="4%" title="Drop rate %">{{ dropRate('random_drops', item, 'battle') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.TS > 0" width="7%" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.TS > 0" width="7%">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.TS > 0" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'TS') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.craft > 0" width="7%" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.craft > 0" width="7%">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.craft > 0" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'craft') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.carve > 0" width="7%" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.carve > 0" width="7%">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.carve > 0" width="4%"  title="Drop rate %">{{ dropRate('random_drops', item, 'carve') }}</td>
                                     <th class="text-right" width="7%" :title="getTotal('random_drops', item).format()">{{ getTotal('random_drops', item).abbr() }}</th>
+                                    <!--th class="text-right" width="7%" title="per hour">~{{ getPerHour('random_drops', item).format(2) }}</th-->
                                 </tr>
                             </tbody>
                             <thead>
-                                <tr><th class="text-center" colspan="14">Stats</th></tr>
+                                <tr><th class="text-center" colspan="15">Stats</th></tr>
                             </thead>
                             <tbody>
                                 <tr v-for="(categories, item) in drop_tracker.stats_drops" :class="colorClassFor(item)">
                                     <td>{{ item.split('_').join(' ').ucWords() }}</td>
-                                    <td class="text-right" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
-                                    <td class="text-right">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'battle') }}</td>
-                                    <td class="text-right" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
-                                    <td class="text-right">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'TS') }}</td>
-                                    <td class="text-right" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
-                                    <td class="text-right">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'craft') }}</td>
-                                    <td class="text-right" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
-                                    <td class="text-right">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
-                                    <td class="text-right dt-section-divider" title="Drop rate %">{{ dropRate('stats_drops', item, 'carve') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.battle > 0" :title="categories.battle.t.format()">{{ categories.battle.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.battle > 0">{{ categories.battle.a !== null ? categories.battle.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.battle > 0" title="Drop rate %">{{ dropRate('stats_drops', item, 'battle') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.TS > 0" :title="categories.TS.t.format()">{{ categories.TS.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.TS > 0">{{ categories.TS.a !== null ? categories.TS.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.TS > 0" title="Drop rate %">{{ dropRate('stats_drops', item, 'TS') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.craft > 0" :title="categories.craft.t.format()">{{ categories.craft.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.craft > 0">{{ categories.craft.a !== null ? categories.craft.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.craft > 0" title="Drop rate %">{{ dropRate('stats_drops', item, 'craft') }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.carve > 0" :title="categories.carve.t.format()">{{ categories.carve.t.abbr() }}</td>
+                                    <td class="text-right" v-if="drop_tracker.actions.carve > 0">{{ categories.carve.a !== null ? categories.carve.a.format() : 'Actions' }}</td>
+                                    <td class="text-right dt-section-divider" v-if="drop_tracker.actions.carve > 0" title="Drop rate %">{{ dropRate('stats_drops', item, 'carve') }}</td>
                                     <th class="text-right" :title="getTotal('stats_drops', item).format()">{{ getTotal('stats_drops', item).abbr() }}</th>
+                                    <!--th class="text-right" width="7%" title="per hour">~{{ getPerHour('stats_drops', item).format(2) }}</th-->
                                 </tr>
                             </tbody>
                         </table>
@@ -1003,6 +1005,11 @@
 
                                 return values.reduce((carry, value) => carry + value.t, 0);
                             },
+                            // getPerHour(section, item) {
+                            //     let total = this.getTotal(section, item);
+                            //     let diff = moment.tz(GAME_TIME_ZONE) - this.drop_tracker.trackerStart;
+                            //     return values.reduce((carry, value) => carry + value.t, 0);
+                            // },
                             colorClassFor(item) {
                                 return {
                                     'crystals': item === 'crystals',
@@ -1071,7 +1078,7 @@
                                 }
 
                                 return dropRate.format(2) + '%';
-                            }
+                            },
                         }
                     });
                 },
@@ -1902,31 +1909,31 @@
                         case 'battle':
                             VARIABLES.QoLStats.bs = moment.tz(GAME_TIME_ZONE);
                             VARIABLES.QoLStats.b = 0;
-                            VARIABLES.QoLStats.BattleXPPerHour = 0;
-                            VARIABLES.QoLStats.BattleGoldPerHour = 0;
-                            VARIABLES.QoLStats.BattleClanXPPerHour = 0;
-                            VARIABLES.QoLStats.BattleClanGoldPerHour = 0;
+                            VARIABLES.QoLStats.d.BattleXPPerHour = 0;
+                            VARIABLES.QoLStats.d.BattleGoldPerHour = 0;
+                            VARIABLES.QoLStats.d.BattleClanXPPerHour = 0;
+                            VARIABLES.QoLStats.d.BattleClanGoldPerHour = 0;
                             break;
 
                         case 'ts':
                             VARIABLES.QoLStats.hs = moment.tz(GAME_TIME_ZONE);
                             VARIABLES.QoLStats.h = 0;
-                            VARIABLES.QoLStats.TSXPPerHour = 0;
-                            VARIABLES.QoLStats.TSResourcesPerHour = 0;
-                            VARIABLES.QoLStats.TSClanResourcesPerHour = 0;
-                            VARIABLES.QoLStats.TSResourcesPerHour = 0;
+                            VARIABLES.QoLStats.d.TSXPPerHour = 0;
+                            VARIABLES.QoLStats.d.TSResourcesPerHour = 0;
+                            VARIABLES.QoLStats.d.TSClanResourcesPerHour = 0;
+                            VARIABLES.QoLStats.d.TSResourcesPerHour = 0;
                             break;
 
                         case 'craft':
                             VARIABLES.QoLStats.cts = moment.tz(GAME_TIME_ZONE);
                             VARIABLES.QoLStats.ct = 0;
-                            VARIABLES.QoLStats.CTXPPerHour = 0;
+                            VARIABLES.QoLStats.d.CTXPPerHour = 0;
                             break;
 
                         case 'carve':
                             VARIABLES.QoLStats.cas = moment.tz(GAME_TIME_ZONE);
                             VARIABLES.QoLStats.ca = 0;
-                            VARIABLES.QoLStats.CAXPPerHour = 0;
+                            VARIABLES.QoLStats.d.CAXPPerHour = 0;
                             break;
 
                         default:
