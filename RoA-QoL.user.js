@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.3.1-beta
+// @version      2.3.1-beta2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180726
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css?rev=180801
 // @resource     QoLTrackerWorker   https://rawgit.com/edvordo/roa-qol/master/workers/trackerSaveWorker.js?rev=180707
 // @resource     QoLProcessorWorker https://rawgit.com/edvordo/roa-qol/master/workers/trackerProcessorWorker.js?rev=180717
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
@@ -368,11 +368,14 @@
                     let o = new MutationObserver(mutationList => {
                         mutationList.forEach(mutation => {
                             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                                fn.__.dyeUserMessage(mutation.addedNodes[0]);
+                                for (let node of mutation.addedNodes) {
+                                    fn.__.dyeUserMessage(node);
+                                }
                             }
                         });
                     });
                     o.observe(document.querySelector('#chatMessageList'), {childList: true});
+                    o.observe(document.querySelector('#chatMessageHistory'), {childList: true});
                     return o;
                 }
             },
@@ -578,7 +581,7 @@
                     if (!option.getAttribute('value')) {
                         return;
                     }
-                    let className = option.textContent.match(/(ruby|opal|sapphire|emerald)/i);
+                    let className = option.textContent.match(/\[L:\d+] [a-z]+ ([a-z]+)/i);
                     if (!className) {
                         return;
                     }
@@ -1627,6 +1630,9 @@
 
                 dyeUserMessages() {
                     document.querySelectorAll('#chatMessageList > li').forEach(li => {
+                        fn.__.dyeUserMessage(li);
+                    });
+                    document.querySelectorAll('#chatMessageHistory > li').forEach(li => {
                         fn.__.dyeUserMessage(li);
                     });
                 },

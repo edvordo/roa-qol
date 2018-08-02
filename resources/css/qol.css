@@ -136,3 +136,8 @@ details.qol-new-log {
 #allThemTables > tbody > tr > td {
     width: calc(100% / 6);
 }
+
+table#allThemTables > tbody > tr > td > table {
+    width: 85%;
+    margin: 0 7.5%;
+}
