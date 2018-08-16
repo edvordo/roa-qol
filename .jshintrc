@@ -5,7 +5,8 @@
     "GM_info": true,
     "GM_addStyle": true,
     "GM_getResourceText": true,
-    "_": true
+    "_": true,
+    "JsStore": true
   },
   "strict": true
 }

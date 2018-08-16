@@ -1,3 +1,31 @@
+#houseRoomItemsBuilt li {
+    clear: both;
+    text-align: right;
+    display: block;
+}
+
+#houseRoomItemsBuilt .houseViewRoomItem {
+    float: left;
+}
+
+div#itemEquippedTooltip, div#itemTooltip, div#accessoryTooltip, div#gemTooltip {
+    position: fixed;
+    top: initial !important;
+    bottom: 10px !important;
+}
+
+div#itemEquippedTooltip {
+    left: 215px !important;
+}
+
+div#itemTooltip {
+    left: 10px !important;
+}
+
+div#gemTooltip {
+    left: 420px !important;
+}
+
 .houseLabel {
     display: block;
     text-decoration: none !important;
