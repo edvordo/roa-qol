@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.4.0-beta1
+// @version      2.4.0-beta2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -219,16 +219,16 @@
             donationsTable: document.querySelector('#myClanDonationTable'),
 
             battleQuestsDropRates: {
-                kill       : 1,
-                marbles    : 2,
-                rabbit_foot: 3,
-                talisman   : 4,
-                vials      : 5,
-                tomes      : 6,
-                torches    : 7,
-                heirlooms  : 8,
-                perfumes   : 9,
-                documents  : 10
+                kill    : 1,
+                marble  : 2,
+                rabbit  : 3,
+                talisman: 4,
+                vial    : 5,
+                tome    : 6,
+                torchs  : 7,
+                heirloom: 8,
+                perfum  : 9,
+                document: 10
             }
         };
 
@@ -823,7 +823,7 @@
                         from   : AVGDMGSTR_TBL_NAME,
                         groupBy: 't',
                     }).then(res => {
-                        console.log(JSON.stringify(res, null, '\t'));
+                        // console.log(JSON.stringify(res, null, '\t'));
                         let item = res.shift();
                         if (item) {
                             VARIABLES.jsstore.avg_dmg.latest         = {};
@@ -868,6 +868,14 @@
                     document.querySelector('#myClanDonationWrapper').insertAdjacentHTML('afterbegin', TEMPLATES.clanDonationsModeSelector);
                     document.querySelector('#chatSendMessage').classList.add('btn-block');
                     document.querySelector('#profileOptionTooltip').insertAdjacentHTML('beforeend', TEMPLATES.profileTooltipUserColor);
+
+                    let div = document.createElement('div');
+                    div.classList.add('center');
+                    div.classList.add('small');
+                    div.classList.add('RQ-quest-estimate');
+                    document.querySelector('#battleQuest').insertAdjacentElement('beforeend', div.cloneNode());
+                    document.querySelector('#tradeskillQuest').insertAdjacentElement('beforeend', div.cloneNode());
+                    document.querySelector('#professionQuest').insertAdjacentElement('beforeend', div.cloneNode());
                 },
                 setupTemplates() {
                     let chartsContentTmpl = '';
@@ -1542,71 +1550,76 @@
                             ]);
                         }
                         fn.__.showChart('#RQ-hub-chart-' + section, section, graphData);
-                    });
-
-                    // min max
-                    let s2 = Date.now();
-                    query  = {
-                        from     : TRACKER_TBL_NAME,
-                        where    : {
-                            t: section
-                        },
-                        aggregate: {
-                            min: 'ts',
-                            max: 'ts',
-                            sum: 'g'
-                        }
-                    };
-                    VARIABLES.jsstore.db.select(query).then(rows => {
-                        console.log('s2', (Date.now() - s2) / 1000);
                         if (0 === rows.length) {
+                            $('#RQ-hub-stats-' + section).DataTable().clear().draw();
                             return;
                         }
-                        let row = rows.shift();
+
+                        // min max
+                        let s2 = Date.now();
+                        query  = {
+                            from     : TRACKER_TBL_NAME,
+                            where    : {
+                                t: section
+                            },
+                            aggregate: {
+                                min: 'ts',
+                                max: 'ts',
+                                sum: 'g'
+                            }
+                        };
+                        VARIABLES.jsstore.db.select(query).then(rows => {
+                            console.log('s2', (Date.now() - s2) / 1000);
+                            if (0 === rows.length) {
+                                return;
+                            }
+                            let row = rows.shift();
 
 
-                        let total = row['sum(g)'];
+                            let total = row['sum(g)'];
 
-                        let since = moment.tz(row['min(ts)'], GAME_TIME_ZONE);
-                        let until = moment.tz(row['max(ts)'], GAME_TIME_ZONE);
+                            let since = moment.tz(row['min(ts)'], GAME_TIME_ZONE);
+                            let until = moment.tz(row['max(ts)'], GAME_TIME_ZONE);
 
-                        let average = (total / ((until.valueOf() - since.valueOf()) / (60 * 60 * 24 * 1000))).format(2);
+                            let average = (total / ((until.valueOf() - since.valueOf()) / (60 * 60 * 24 * 1000))).format(2);
 
-                        let summary = [
-                            since.format('Do MMM HH:mm:ss'),
-                            until.format('Do MMM HH:mm:ss')
-                        ];
+                            let summary = [
+                                since.format('Do MMM HH:mm:ss'),
+                                until.format('Do MMM HH:mm:ss')
+                            ];
 
-                        document.querySelector(`#RQ-hub-chart-${section}-subtitle`).textContent = summary.join(' - ');
+                            document.querySelector(`#RQ-hub-chart-${section}-subtitle`).textContent = summary.join(' - ');
 
-                        document.querySelector(`table#RQ-hub-stats-${section} > caption`).textContent = `~${average} / day`;
-                    });
+                            document.querySelector(`table#RQ-hub-stats-${section} > caption`).textContent = `~${average} / day`;
+                        });
 
-                    // totals/averages
-                    let s3 = Date.now();
-                    query  = {
-                        from     : TRACKER_TBL_NAME,
-                        where    : {
-                            t: section
-                        },
-                        groupBy  : 'd',
-                        aggregate: {
-                            sum: 'g'
-                        }
-                    };
-                    VARIABLES.jsstore.db.select(query).then(rows => {
-                        console.log('s3', (Date.now() - s3) / 1000);
-                        let dt = $('#RQ-hub-stats-' + section).DataTable();
+                        // totals/averages
+                        let s3 = Date.now();
+                        query  = {
+                            from     : TRACKER_TBL_NAME,
+                            where    : {
+                                t: section
+                            },
+                            groupBy  : 'd',
+                            aggregate: {
+                                sum: 'g'
+                            }
+                        };
+                        VARIABLES.jsstore.db.select(query).then(rows => {
+                            console.log('s3', (Date.now() - s3) / 1000);
+                            let dt = $('#RQ-hub-stats-' + section).DataTable();
 
-                        dt.clear();
-                        for (let row of rows) {
-                            dt.row.add([
-                                moment.tz(row.ts, GAME_TIME_ZONE).format('Do MMM'),
-                                row['sum(g)'].format(2),
-                                '~' + (row['sum(g)'] / 24).format(2) + ' / h'
-                            ]);
-                        }
-                        dt.draw();
+                            dt.clear();
+                            for (let row of rows) {
+                                dt.row.add([
+                                    moment.tz(row.ts, GAME_TIME_ZONE).format('Do MMM'),
+                                    row['sum(g)'].format(2),
+                                    '~' + (row['sum(g)'] / 24).format(2) + ' / h'
+                                ]);
+                            }
+                            dt.draw();
+                        });
+
                     });
                 },
 
@@ -1741,6 +1754,32 @@
                     VARIABLES.drop_tracker.stats_drops.growth[type].a += growthCount > 0 ? 1 : 0;
                 },
 
+                questEstimate(quest, batte = false) {
+
+                    let required        = quest.r;
+                    let currentProgress = quest.c;
+                    let actionsNeeded   = required - currentProgress;
+
+                    if (document.location.host === 'beta.avabur.com') {
+                        actionsNeeded /= 10;
+                    }
+                    let multiplier = 1;
+                    for (let item in VARIABLES.battleQuestsDropRates) {
+                        if (!VARIABLES.battleQuestsDropRates.hasOwnProperty(item)) {
+                            continue;
+                        }
+                        let rx = new RegExp(item, 'i');
+                        if (quest.i.match(rx)) {
+                            multiplier = VARIABLES.battleQuestsDropRates[item];
+                        }
+                    }
+
+                    let msNeeded = VARIABLES.QoLStats.na * actionsNeeded * multiplier;
+
+                    document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = `Done in ${msNeeded.toTimeEstimate()}`);
+
+                    // console.log(quest.c.format(), quest.r.format(), VARIABLES.QoLStats.na, actionsNeeded.format(), msNeeded.toTimeEstimate(), msNeeded.toTimeRemaining());
+                },
                 processDrops(type, record) {
                     if (!VARIABLES.settings.drop_tracker) {
                         return false;
@@ -1885,10 +1924,13 @@
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
+
+                            fn.__.processDrops('battle', data.b);
+                            fn.__.questEstimate(data.p.bq_info2, true);
+
+                            VARIABLES.QoLStats.na = data.p.next_action;
                         }
                         fn.__.logAvgDmg(data);
-                        fn.__.processDrops('battle', data.b);
-                        VARIABLES.QoLStats.na = data.p.next_action;
                     }
 
                     fn.helpers.updateStats('battle', data.b);
@@ -1924,10 +1966,15 @@
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
+
+                        VARIABLES.QoLStats.na = data.p.next_action;
+
                         fn.__.processDrops('TS', data.a);
+                        fn.__.questEstimate(data.p.tq_info2);
+
+                        fn.helpers.updateStats('TS', data.a);
+
                     }
-                    VARIABLES.QoLStats.na = data.p.next_action;
-                    fn.helpers.updateStats('TS', data.a);
                     if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
                         fn.helpers.updateFavico(data.p.autos_remaining);
                     }
@@ -1955,10 +2002,14 @@
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
+
+                        VARIABLES.QoLStats.na = data.p.next_action;
+
                         fn.__.processDrops('craft', data.a);
+                        fn.__.questEstimate(data.p.pq_info2);
+
+                        fn.helpers.updateStats('Crafting', data.a);
                     }
-                    VARIABLES.QoLStats.na = data.p.next_action;
-                    fn.helpers.updateStats('Crafting', data.a);
                     if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
                         fn.helpers.updateFavico(data.p.autos_remaining);
                     }
@@ -1986,10 +2037,14 @@
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
+
+                        VARIABLES.QoLStats.na = data.p.next_action;
+
                         fn.__.processDrops('carve', data.a);
+                        fn.__.questEstimate(data.p.pq_info2);
+
+                        fn.helpers.updateStats('Carving', data.a);
                     }
-                    VARIABLES.QoLStats.na = data.p.next_action;
-                    fn.helpers.updateStats('Carving', data.a);
                     if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
                         fn.helpers.updateFavico(data.p.autos_remaining);
                     }
