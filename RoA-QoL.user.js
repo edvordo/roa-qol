@@ -955,10 +955,6 @@
                                 <td class="text-right"><a href="https://github.com/edvordo/roa-qol" target="_blank>edvordo/roa-qol">edvordo/roa-qol</a></td>
                             </tr>
                             <tr>
-                                <td>Last tracker save</td>
-                                <td id="RQ-dashboard-history-last-save" class="text-right"></td>
-                            </tr>
-                            <tr>
                                 <td>Last check for update</td>
                                 <td id="RQ-dashboard-update-last" class="text-right"></td>
                             </tr>
@@ -1268,6 +1264,10 @@
                     fn.helpers.populateToSettingsTemplate();
                     fn.__.saveSettings();
                     fn.__.applySettings(true);
+
+                    for (let item of VARIABLES.tracker) {
+                        localStorage.removeItem(TRACKER_SAVE_KEY + '-' + item);
+                    }
                 },
                 applySettings() {
                     // tracked stuff from fame to stats, except average damage vs. strength
