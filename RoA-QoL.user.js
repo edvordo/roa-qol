@@ -875,8 +875,8 @@
                 },
 
                 setupCSS() {
-                    GM_addStyle(GM_getResourceText('QoLCSS'));
                     GM_addStyle(GM_getResourceText('SpectrumCSS'));
+                    GM_addStyle(GM_getResourceText('QoLCSS'));
                 },
                 setupHTML() {
                     // per hour table
