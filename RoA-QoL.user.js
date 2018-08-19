@@ -7,9 +7,10 @@
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180801
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/dev/resources/css/qol.css?rev=180801
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180730
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=180730
+// @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
 // @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
@@ -18,6 +19,7 @@
 // @require      https://cdn.jsdelivr.net/npm/vue
 // @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.worker.js
 // @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
@@ -99,6 +101,7 @@
             drop_tracker             : true,
             chat_content_swap        : false,
             user_color_messages      : true,
+            use_username_based_color : false,
             prefill_all_to_sell      : false,
             estimate_quest_completion: true,
             undercut_by_one          : false,
@@ -682,6 +685,23 @@
                     }
                     className = className[1].toLowerCase();
                     option.classList.add(className);
+                },
+                /**
+                 * Courtesy of @Shylight and http://jsfiddle.net/sUK45/2189/
+                 * @param {string} str
+                 * @returns {string}
+                 */
+                stringToColor(str) {
+                    let hash = 0;
+                    for (let i = 0; i < str.length; i++) {
+                        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    let color = '#';
+                    for (let i = 0; i < 3; i++) {
+                        let value = (hash >> (i * 8)) & 0xFF;
+                        color += ('00' + value.toString(16)).substr(-2);
+                    }
+                    return color;
                 }
             },
             /** private / internal / helper methods */
@@ -856,6 +876,7 @@
 
                 setupCSS() {
                     GM_addStyle(GM_getResourceText('QoLCSS'));
+                    GM_addStyle(GM_getResourceText('SpectrumCSS'));
                 },
                 setupHTML() {
                     // per hour table
@@ -1817,8 +1838,12 @@
                     }
                     let username = usernameElement.textContent;
                     let color    = null;
-                    if (VARIABLES.settings.user_color_set.hasOwnProperty(username) && true === VARIABLES.settings.user_color_messages) {
-                        color = VARIABLES.settings.user_color_set[username];
+                    if (true === VARIABLES.settings.user_color_messages) {
+                        if (VARIABLES.settings.user_color_set.hasOwnProperty(username)) {
+                            color = VARIABLES.settings.user_color_set[username];
+                        } else if (VARIABLES.settings.use_username_based_color) {
+                            color = fn.helpers.stringToColor(username);
+                        }
                     }
 
                     let message = usernameElement.nextElementSibling;
@@ -2261,27 +2286,23 @@
                     if (!username) {
                         return;
                     }
-                    let color = VARIABLES.settings.user_color_set.hasOwnProperty(username) ? VARIABLES.settings.user_color_set[username] : '';
+                    let color = VARIABLES.settings.user_color_set.hasOwnProperty(username) ? VARIABLES.settings.user_color_set[username] : fn.helpers.stringToColor(username);
                     let unset = !VARIABLES.settings.user_color_set.hasOwnProperty(username) ? ' hidden' : '';
                     $.confirm({
                         title  : `Set a custom color for ${username}`,
-                        message: `<input class="form-control" type="color" value="${color}" id="RQ-user-color">`,
+                        message: `<input type="text" value="${color}" id="RQ-user-color">`,
                         buttons: {
                             Confirm: {
                                 'class': 'green',
                                 action : function () {
-                                    VARIABLES.settings.user_color_set[username] = document.querySelector('#RQ-user-color').value;
-                                    fn.__.saveSettings();
-                                    fn.__.applySettings();
-                                }
-                            },
-                            Unset  : {
-                                'class': `red${unset}`,
-                                action : function () {
-                                    if (!VARIABLES.settings.user_color_set.hasOwnProperty(username)) {
+                                    let color = $("#RQ-user-color").spectrum("get");
+                                    if (null !== color) {
+                                        VARIABLES.settings.user_color_set[username] = color;
+                                    } else if (VARIABLES.settings.user_color_set.hasOwnProperty(username)) {
+                                        delete VARIABLES.settings.user_color_set[username];
+                                    } else {
                                         return;
                                     }
-                                    delete VARIABLES.settings.user_color_set[username];
                                     fn.__.saveSettings();
                                     fn.__.applySettings();
                                 }
@@ -2292,6 +2313,15 @@
                                 }
                             }
                         }
+                    });
+
+                    $("#RQ-user-color").spectrum({
+                        flat           : true,
+                        showInput      : true,
+                        allowEmpty     : true,
+                        showInitial    : true,
+                        showButtons    : false,
+                        preferredFormat: "hex"
                     });
                 },
 

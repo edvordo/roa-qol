@@ -169,3 +169,17 @@ table#allThemTables > tbody > tr > td > table {
     width: 85%;
     margin: 0 7.5%;
 }
+
+.sp-container.sp-flat {
+    width: 100%;
+    text-align: center;
+}
+.sp-container{
+    background: transparent;
+    border: none;
+}
+.sp-picker-container {
+    display: inline-block;
+    float: none!important;
+    border-left: none;
+}
