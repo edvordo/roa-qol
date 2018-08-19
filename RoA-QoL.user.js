@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.4.0
+// @version      2.5.0-beta1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -84,23 +84,26 @@
         };
 
         const DEFAULT_SETTINGS = {
-            badge_stamina           : true,
-            badge_fatigue           : true,
-            badge_event             : true,
-            house_tooltips          : true,
-            event_abbreviation      : true,
-            char_count              : true,
-            command_helper          : false,
-            fame_own_gems           : true,
-            event_ratio_message     : true,
-            event_ratio_chat_prepare: true,
-            set_max_quest_reward    : true,
-            clan_donations_modes    : true,
-            drop_tracker            : true,
-            chat_content_swap       : false,
-            user_color_messages     : true,
-            user_color_set          : {},
-            tracker                 : {
+            badge_stamina            : true,
+            badge_fatigue            : true,
+            badge_event              : true,
+            house_tooltips           : true,
+            event_abbreviation       : true,
+            char_count               : true,
+            command_helper           : false,
+            fame_own_gems            : true,
+            event_ratio_message      : true,
+            event_ratio_chat_prepare : true,
+            set_max_quest_reward     : true,
+            clan_donations_modes     : true,
+            drop_tracker             : true,
+            chat_content_swap        : false,
+            user_color_messages      : true,
+            prefill_all_to_sell      : false,
+            estimate_quest_completion: true,
+            undercut_by_one          : false,
+            user_color_set           : {},
+            tracker                  : {
                 fame          : true,
                 crystals      : true,
                 platinum      : true,
@@ -1755,7 +1758,13 @@
                 },
 
                 questEstimate(quest, batte = false) {
-
+                    if (!VARIABLES.settings.estimate_quest_completion) {
+                        return;
+                    }
+                    if (null === quest) {
+                        document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = ``);
+                        return;
+                    }
                     let required        = quest.r;
                     let currentProgress = quest.c;
                     let actionsNeeded   = required - currentProgress;
@@ -2285,6 +2294,27 @@
                         }
                     });
                 },
+
+                prefillAllToSell(currency) {
+                    if (!VARIABLES.settings.prefill_all_to_sell) {
+                        return;
+                    }
+                    currency     = currency.toLowerCase().replace(/\s+/g, '_');
+                    let sellable = document.querySelector(`.${currency}`).getAttribute('data-personal').replace(/,/g, '');
+
+                    document.querySelector('#amountToSell').value = sellable;
+                },
+                undercutByOne(currentSales, pastSales) {
+                    if (!VARIABLES.settings.undercut_by_one) {
+                        return;
+                    }
+                    if (0 === currentSales.length && 0 === pastSales.length) {
+                        return;
+                    }
+                    let price = currentSales.length === 0 ? pastSales.pop().price : currentSales.shift().price;
+
+                    document.querySelector('#sellingPrice').value = price - 1;
+                }
             },
         };
 
@@ -2463,6 +2493,14 @@
 
     $(document).on('click', '#RQ-user-color-set', function () {
         QoL.showUserColorizePrompt();
+    });
+
+    $(document).on('roa-ws:page:market', function (e, data) {
+        console.log(data);
+        if (data.requested.market_type === 'currency') {
+            QoL.prefillAllToSell(data.result.cn);
+            QoL.undercutByOne(data.result.l, data.result.past_transactions);
+        }
     });
 
 })(window, jQuery);
