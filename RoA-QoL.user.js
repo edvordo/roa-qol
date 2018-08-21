@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.5.0-beta1
+// @version      2.5.0-beta2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -55,6 +55,10 @@
         const QOL_DB_NAME        = 'RQDB';
         const TRACKER_TBL_NAME   = 'tracker';
         const AVGDMGSTR_TBL_NAME = 'average_damage_to_strength';
+
+        const DB_QUEUE               = {};
+        DB_QUEUE[TRACKER_TBL_NAME]   = [];
+        DB_QUEUE[AVGDMGSTR_TBL_NAME] = [];
 
         const TRACKER_DB_SCHEMA = {
             name  : QOL_DB_NAME,
@@ -519,19 +523,12 @@
                                 g : gain,
                                 t : name,
                             };
-                            items.push(item);
+                            DB_QUEUE[TRACKER_TBL_NAME].push(item);
                             if (!VARIABLES.jsstore.tracker.latest.hasOwnProperty(d)) {
                                 VARIABLES.jsstore.tracker.latest[d] = {};
                             }
                             VARIABLES.jsstore.tracker.latest[d][name] = v;
                         }
-                        VARIABLES.jsstore.db.insert({
-                            into  : TRACKER_TBL_NAME,
-                            values: items,
-                            return: true
-                        }).catch(err => {
-                            console.error(err);
-                        });
                     });
                     o.observe(document.querySelector(selector), {attributes: true, attributeOldValue: true});
                     o.disconnect();
@@ -786,6 +783,35 @@
                                 'href',
                                 `https://github.com/edvordo/roa-qol/compare/${GM_info.script.version}...${VARIABLES.tagMap[GM_info.script.version]}`
                             );
+                    }
+                },
+                saveDatabaseQueue() {
+                    let data;
+
+                    data = DB_QUEUE[TRACKER_TBL_NAME];
+                    if (data.length > 0) {
+                        VARIABLES.jsstore.db.insert({
+                            into  : TRACKER_TBL_NAME,
+                            values: data,
+                            return: true
+                        }).then(rows => {
+                            if (rows.length > 0) {
+                                DB_QUEUE[TRACKER_TBL_NAME] = [];
+                            }
+                        });
+                    }
+
+                    data = DB_QUEUE[AVGDMGSTR_TBL_NAME];
+                    if (data.length > 0) {
+                        VARIABLES.jsstore.db.insert({
+                            into  : AVGDMGSTR_TBL_NAME,
+                            values: data,
+                            return: true
+                        }).then(rows => {
+                            if (rows.length > 0) {
+                                DB_QUEUE[AVGDMGSTR_TBL_NAME] = [];
+                            }
+                        });
                     }
                 },
 
@@ -1191,6 +1217,7 @@
                     setTimeout(fn.__.checkForUpdate, 10 * 1000);
                     setInterval(fn.__.cleanUpTracker, 6 * 60 * 60 * 1000); // every 6 hours
                     setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
+                    setInterval(fn.__.saveDatabaseQueue, 5 * 60 * 1000); // every 5 minutes
                 },
                 setupVariables() {
                     // per hour
@@ -1446,16 +1473,8 @@
                     } else {
                         if (Object.keys(VARIABLES.jsstore.avg_dmg.latest).length > 0) {
                             let key = Object.keys(VARIABLES.jsstore.avg_dmg.latest).pop();
-                            VARIABLES.jsstore.db.insert({
-                                into  : AVGDMGSTR_TBL_NAME,
-                                values: [VARIABLES.jsstore.avg_dmg.latest[key]],
-                                return: true
-                            }).then(res => {
-                                // log('shifting avgdmg2str');
-                            }).catch((e) => {
-                                console.log('failed to log AD2S item');
-                                console.log(e);
-                            });
+
+                            DB_QUEUE[AVGDMGSTR_TBL_NAME].push(VARIABLES.jsstore.avg_dmg.latest[key]);
                             delete VARIABLES.jsstore.avg_dmg.latest[key];
                         }
                         VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base] = {
@@ -2296,12 +2315,19 @@
                                 'class': 'green',
                                 action : function () {
                                     let color = $("#RQ-user-color").spectrum("get");
-                                    if (null !== color) {
-                                        VARIABLES.settings.user_color_set[username] = color;
-                                    } else if (VARIABLES.settings.user_color_set.hasOwnProperty(username)) {
-                                        delete VARIABLES.settings.user_color_set[username];
-                                    } else {
+                                    if (null === color) {
                                         return;
+                                    }
+                                    VARIABLES.settings.user_color_set[username] = '#' + color.toHex();
+                                    fn.__.saveSettings();
+                                    fn.__.applySettings();
+                                }
+                            },
+                            Unset  : {
+                                'class': 'red' + unset,
+                                action : function () {
+                                    if (VARIABLES.settings.user_color_set.hasOwnProperty(username)) {
+                                        delete VARIABLES.settings.user_color_set[username];
                                     }
                                     fn.__.saveSettings();
                                     fn.__.applySettings();
@@ -2318,7 +2344,7 @@
                     $("#RQ-user-color").spectrum({
                         flat           : true,
                         showInput      : true,
-                        allowEmpty     : true,
+                        // allowEmpty     : true,
                         showInitial    : true,
                         showButtons    : false,
                         preferredFormat: "hex"
@@ -2526,10 +2552,23 @@
     });
 
     $(document).on('roa-ws:page:market', function (e, data) {
-        console.log(data);
         if (data.requested.market_type === 'currency') {
             QoL.prefillAllToSell(data.result.cn);
             QoL.undercutByOne(data.result.l, data.result.past_transactions);
+        }
+    });
+
+
+    $(document).on("keydown", function (e) {
+        let keys = {
+            Z: 90, // Colori[z]e
+        };
+        let key  = e.which;
+        if ($("#profileOptionTooltip").css("display") === "block") {
+
+            if (key === keys.Z) {
+                QoL.showUserColorizePrompt();
+            }
         }
     });
 
