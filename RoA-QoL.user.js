@@ -1810,7 +1810,7 @@
                     }
                     return multiplier;
                 },
-                questEstimate(quest, batte = false) {
+                questEstimate(quest, battle = false) {
                     if (!VARIABLES.settings.estimate_quest_completion) {
                         return;
                     }
@@ -1819,7 +1819,7 @@
                         return;
                     }
 
-                    if (quest.r <= $quest.c) {
+                    if (quest.r <= quest.c) {
                         document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = `Done :)`);
                         return;
                     }
