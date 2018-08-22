@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.5.0-beta2
+// @version      2.5.0-beta3
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -17,8 +17,8 @@
 // @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
 // @require      https://cdn.rawgit.com/markdown-it/markdown-it/8.4.1/dist/markdown-it.min.js
 // @require      https://cdn.jsdelivr.net/npm/vue
-// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.worker.js
-// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.js
+// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.worker.min.js
+// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
@@ -1797,21 +1797,7 @@
                     VARIABLES.drop_tracker.stats_drops.growth[type].a += growthCount > 0 ? 1 : 0;
                 },
 
-                questEstimate(quest, batte = false) {
-                    if (!VARIABLES.settings.estimate_quest_completion) {
-                        return;
-                    }
-                    if (null === quest) {
-                        document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = ``);
-                        return;
-                    }
-                    let required        = quest.r;
-                    let currentProgress = quest.c;
-                    let actionsNeeded   = required - currentProgress;
-
-                    if (document.location.host === 'beta.avabur.com') {
-                        actionsNeeded /= 10;
-                    }
+                getQuestMultiplier(quest) {
                     let multiplier = 1;
                     for (let item in VARIABLES.battleQuestsDropRates) {
                         if (!VARIABLES.battleQuestsDropRates.hasOwnProperty(item)) {
@@ -1821,6 +1807,34 @@
                         if (quest.i.match(rx)) {
                             multiplier = VARIABLES.battleQuestsDropRates[item];
                         }
+                    }
+                    return multiplier;
+                },
+                questEstimate(quest, batte = false) {
+                    if (!VARIABLES.settings.estimate_quest_completion) {
+                        return;
+                    }
+                    if (null === quest) {
+                        document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = ``);
+                        return;
+                    }
+
+                    if (quest.r <= $quest.c) {
+                        document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = `Done :)`);
+                        return;
+                    }
+
+                    let required        = quest.r;
+                    let currentProgress = quest.c;
+                    let actionsNeeded   = required - currentProgress;
+
+                    if (document.location.host === 'beta.avabur.com') {
+                        actionsNeeded /= 10;
+                    }
+
+                    let multiplier = 1;
+                    if (true === battle) {
+                        multiplier = fn.__.getQuestMultiplier(quest);
                     }
 
                     let msNeeded = VARIABLES.QoLStats.na * actionsNeeded * multiplier;
@@ -1968,6 +1982,7 @@
                         VARIABLES.QoLStats.d.BattleGoldPerHour += data.b.g;
                         VARIABLES.QoLStats.d.BattleClanXPPerHour += data.b.hasOwnProperty('cxp') ? data.b.cxp : 0;
                         VARIABLES.QoLStats.d.BattleClanGoldPerHour += data.b.hasOwnProperty('cg') ? data.b.cg : 0;
+                        VARIABLES.QoLStats.PlXPReq = data.p.level.tnl;
                         if (VARIABLES.QoLStats.PlXPReq > 0 && data.b.r === 1) { // won
                             let eta;
                             if (data.b.xp === 0) {
@@ -2026,7 +2041,6 @@
                         fn.__.questEstimate(data.p.tq_info2);
 
                         fn.helpers.updateStats('TS', data.a);
-
                     }
                     if (data.p.autos_remaining >= 0 && VARIABLES.settings.badge_stamina) {
                         fn.helpers.updateFavico(data.p.autos_remaining);
