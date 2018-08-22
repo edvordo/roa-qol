@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.5.0
+// @version      2.5.1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -767,7 +767,7 @@
 
                                 detail.appendChild(summary);
                                 detail.setAttribute('data-version', release.tag_name);
-                                detail.insertAdjacentHTML('beforeend', markdownit().render(release.body));
+                                detail.insertAdjacentHTML('beforeend', markdownit({html:true}).render(release.body));
                                 if (compareVersions(release.tag_name, GM_info.script.version) > 0) {
                                     detail.setAttribute('open', null);
                                     detail.classList.add('qol-new-log');
@@ -1810,7 +1810,7 @@
                     }
                     return multiplier;
                 },
-                questEstimate(quest, batte = false) {
+                questEstimate(quest, battle = false) {
                     if (!VARIABLES.settings.estimate_quest_completion) {
                         return;
                     }
@@ -1819,7 +1819,7 @@
                         return;
                     }
 
-                    if (quest.r <= $quest.c) {
+                    if (quest.r <= quest.c) {
                         document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = `Done :)`);
                         return;
                     }
