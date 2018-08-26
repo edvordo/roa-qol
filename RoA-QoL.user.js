@@ -9,7 +9,7 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180819
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180819
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180827
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
