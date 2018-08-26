@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.5.1
+// @version      2.6.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -109,6 +109,7 @@
             prefill_all_to_sell      : false,
             estimate_quest_completion: true,
             undercut_by_one          : false,
+            export_ingredients       : true,
             user_color_set           : {},
             tracker                  : {
                 fame          : true,
@@ -239,7 +240,9 @@
                 heirloom: 8,
                 perfum  : 9,
                 document: 10
-            }
+            },
+
+            ingredientExportData: ''
         };
 
         // noinspection JSUnresolvedFunction
@@ -488,7 +491,6 @@
                         if (VARIABLES.jsstore.tracker.latest === null) {
                             return;
                         }
-                        let items = [];
                         for (let m of ml) {
                             if (m.type !== 'attributes' || m.attributeName !== attrName) {
                                 continue;
@@ -767,7 +769,7 @@
 
                                 detail.appendChild(summary);
                                 detail.setAttribute('data-version', release.tag_name);
-                                detail.insertAdjacentHTML('beforeend', markdownit({html:true}).render(release.body));
+                                detail.insertAdjacentHTML('beforeend', markdownit({html: true}).render(release.body));
                                 if (compareVersions(release.tag_name, GM_info.script.version) > 0) {
                                     detail.setAttribute('open', null);
                                     detail.classList.add('qol-new-log');
@@ -926,6 +928,8 @@
                     document.querySelector('#battleQuest').insertAdjacentElement('beforeend', div.cloneNode());
                     document.querySelector('#tradeskillQuest').insertAdjacentElement('beforeend', div.cloneNode());
                     document.querySelector('#professionQuest').insertAdjacentElement('beforeend', div.cloneNode());
+
+                    document.querySelector('#massButtonHolder').insertAdjacentHTML('beforeend', '<a id="RQ-export-ingredients-for-bento" class="small hidden">[Export]</a>');
                 },
                 setupTemplates() {
                     let chartsContentTmpl = '';
@@ -1516,6 +1520,9 @@
                         from : AVGDMGSTR_TBL_NAME,
                         where: {
                             t: currentSkill
+                        },
+                        order: {
+                            by: 'ts'
                         }
                     }).then(rows => {
                         if (0 === rows.length) {
@@ -1581,6 +1588,9 @@
                         from : TRACKER_TBL_NAME,
                         where: {
                             t: section
+                        },
+                        order: {
+                            by: 'ts'
                         }
                     };
                     VARIABLES.jsstore.db.select(query).then(rows => {
@@ -1814,7 +1824,7 @@
                     if (!VARIABLES.settings.estimate_quest_completion) {
                         return;
                     }
-                    if (null === quest) {
+                    if (1 === quest.a) {
                         document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = ``);
                         return;
                     }
@@ -2384,6 +2394,48 @@
                     let price = currentSales.length === 0 ? pastSales.pop().price : currentSales.shift().price;
 
                     document.querySelector('#sellingPrice').value = price - 1;
+                },
+
+                prepareIngredientsExport(ingredients) {
+                    if (!VARIABLES.settings.export_ingredients) {
+                        return false;
+                    }
+                    let exportData = [];
+                    for (const ingredient of ingredients) {
+                        if (false === ingredient.m) {
+                            continue;
+                        }
+                        exportData.push(`${ingredient.n}${ingredient.v}`);
+                    }
+                    VARIABLES.ingredientExportData = exportData.join('? ') + ' Market';
+                    document.querySelector('#massButtonHolder').style.display = 'block';
+                    document.querySelector('#inventoryItemCountWrapper').style.display = 'none';
+                    document.querySelectorAll('#massButtonHolder a:not(#RQ-export-ingredients-for-bento)').forEach(a => a.style.display = 'none');
+                    document.querySelector('#RQ-export-ingredients-for-bento').classList.remove('hidden');
+                },
+                hideIngredientExportLink() {
+                    document.querySelector('#RQ-export-ingredients-for-bento').classList.add('hidden');
+                },
+                copyIngredientsExport() {
+                    if (!VARIABLES.settings.export_ingredients) {
+                        return false;
+                    }
+
+                    $.alert(`Copy the contents of this input and paste into <a href="https://docs.google.com/spreadsheets/d/1Uh1VZhFwErgaJBYpNjRgThSg3MUXi_eyYb64QQWkdDA/edit#gid=1857737512" target="_blank">Bento's Sheets</a>.<br><input value="${VARIABLES.ingredientExportData}" id="RQ-ingredient-export" type="text" class="form-control"><br><em id="RQ-auto-sopy-success" class="text-success small"></em>`, 'Ingredients export');
+
+                    document.querySelector('#RQ-ingredient-export').select();
+
+                    if ('off' === document.designMode) {
+                        document.designMode = 'on';
+                    }
+
+                    let copy = document.execCommand('copy');
+
+                    document.designMode = 'off';
+
+                    if (true === copy) {
+                        document.querySelector('#RQ-auto-sopy-success').textContent = 'Text has been copied automatically ..';
+                    }
                 }
             },
         };
@@ -2572,6 +2624,15 @@
         }
     });
 
+    $(document).on('roa-ws:page:inventory_ingredients', function (e, data) {
+        if (data.hasOwnProperty('result')) {
+            QoL.prepareIngredientsExport(data.result);
+        }
+    });
+
+    $(document).on('roa-ws:page:inventory_items roa-ws:page:inventory_tools roa-ws:page:inventory_gems', function () {
+        QoL.hideIngredientExportLink();
+    });
 
     $(document).on("keydown", function (e) {
         let keys = {
@@ -2584,6 +2645,11 @@
                 QoL.showUserColorizePrompt();
             }
         }
+    });
+
+    $(document).on('click', '#RQ-export-ingredients-for-bento', function(e){
+        e.preventDefault();
+        QoL.copyIngredientsExport();
     });
 
 })(window, jQuery);
