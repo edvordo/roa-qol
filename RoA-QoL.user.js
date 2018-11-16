@@ -236,7 +236,7 @@
                 talisman: 4,
                 vial    : 5,
                 tome    : 6,
-                torchs  : 7,
+                torches : 7,
                 heirloom: 8,
                 perfum  : 9,
                 document: 10
