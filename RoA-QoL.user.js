@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.6.1
+// @version      2.6.2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -222,6 +222,7 @@
                 stats_drops : {
                     total : {battle: {t: 0, a: null}, TS: {t: 0, a: null}, craft: {t: 0, a: null}, carve: {t: 0, a: null}},
                     growth: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
+                    multi_stat: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
                 }
             },
 
@@ -1201,7 +1202,7 @@
                                     return '';
                                 }
                                 let data        = this.drop_tracker[section][item][type];
-                                let lookAtTotal = ['plundering', 'multi_drop', 'items', 'growth'];
+                                let lookAtTotal = ['plundering', 'multi_drop', 'items', 'growth', 'multistat_chance'];
                                 let base        = data.a ? data.a : data.t;
                                 if (lookAtTotal.indexOf(item) !== -1 || section === 'stats_drops') {
                                     base = data.t;
@@ -1774,17 +1775,19 @@
                     let totalCount  = 0;
                     let normalCount = 0;
                     let growthCount = 0;
+                    let multistatCount = 0;
                     for (let section in stat.stats) {
                         if (!stat.stats.hasOwnProperty(section)) {
                             continue;
                         }
                         let stats = stat.stats[section];
-                        if (['stat_boost', 'normal'].indexOf(section) === -1) {
+                        if (['stat_boost', 'normal', 'multistat_chance'].indexOf(section) === -1) {
                             continue;
                         }
                         normalCount += section === 'normal' ? Object.keys(stats).length : 0;
                         growthCount += section === 'stat_boost' ? Object.keys(stats).length : 0;
-                        totalCount += normalCount + growthCount;
+                        multistatCount += section === 'multistat_chance' ? Object.keys(stats).length : 0;
+                        totalCount += normalCount + growthCount + multistatCount;
                         for (let stat in stats) {
                             if (!stats.hasOwnProperty(stat)) {
                                 continue;
@@ -1805,6 +1808,8 @@
                     VARIABLES.drop_tracker.stats_drops.total[type].t += totalCount;
                     VARIABLES.drop_tracker.stats_drops.growth[type].t += growthCount;
                     VARIABLES.drop_tracker.stats_drops.growth[type].a += growthCount > 0 ? 1 : 0;
+                    VARIABLES.drop_tracker.stats_drops.multi_stat[type].t += multistatCount;
+                    VARIABLES.drop_tracker.stats_drops.multi_stat[type].a += multistatCount > 0 ? 1 : 0;
                 },
 
                 getQuestMultiplier(quest) {
