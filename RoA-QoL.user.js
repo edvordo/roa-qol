@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.6.2
+// @version      2.7.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -220,8 +220,8 @@
                     items     : {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}}
                 },
                 stats_drops : {
-                    total : {battle: {t: 0, a: null}, TS: {t: 0, a: null}, craft: {t: 0, a: null}, carve: {t: 0, a: null}},
-                    growth: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
+                    total     : {battle: {t: 0, a: null}, TS: {t: 0, a: null}, craft: {t: 0, a: null}, carve: {t: 0, a: null}},
+                    growth    : {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
                     multi_stat: {battle: {t: 0, a: 0}, TS: {t: 0, a: 0}, craft: {t: 0, a: 0}, carve: {t: 0, a: 0}},
                 }
             },
@@ -243,7 +243,9 @@
                 document: 10
             },
 
-            ingredientExportData: ''
+            ingredientExportData: '',
+
+            marketData: {}
         };
 
         // noinspection JSUnresolvedFunction
@@ -441,7 +443,46 @@
                     o.observe(document.querySelector('#chatMessageList'), {childList: true});
                     o.observe(document.querySelector('#chatMessageHistory'), {childList: true});
                     return o;
-                }
+                },
+                houseQuickBuildTimestamps: new MutationObserver(mutationList => {
+                    mutationList.forEach(mutation => {
+                        if ('childList' === mutation.type && mutation.addedNodes.length > 0) {
+                            mutation.addedNodes.forEach(i => {
+                                let total = fn.helpers.computeTotalTimeInSeconds(i.textContent);
+                                if (0 === total) {
+                                    return false;
+                                }
+                                let when = moment.tz(GAME_TIME_ZONE).add(total, 'seconds');
+                                let span = document.createElement('span');
+                                span.classList.add('small');
+                                span.classList.add('rq-timer');
+                                span.setAttribute('data-seconds', total);
+                                span.textContent = ` (${when.format('MMM DD HH:mm:ss')})`;
+                                i.appendChild(span);
+                            });
+                        }
+                    });
+                }),
+                houseItemBuildTimestamps : new MutationObserver(mutationList => {
+                    let parent = document.querySelector('#houseRoomItemLevelUpgradeTimeCost');
+                    mutationList.forEach(mutation => {
+                        if ('childList' === mutation.type && mutation.addedNodes.length > 0) {
+                            mutation.addedNodes.forEach(i => {
+                                let total = fn.helpers.computeTotalTimeInSeconds(i.textContent);
+                                if (0 === total) {
+                                    return false;
+                                }
+                                let when = moment.tz(GAME_TIME_ZONE).add(total, 'seconds');
+                                let span = document.createElement('span');
+                                span.classList.add('small');
+                                span.classList.add('rq-timer');
+                                span.setAttribute('data-seconds', total);
+                                span.textContent = ` (${when.format('MMM DD HH:mm:ss')})`;
+                                parent.appendChild(span);
+                            });
+                        }
+                    });
+                })
             },
             general   : {
                 fameOwnGemsObserver   : new MutationObserver(
@@ -701,7 +742,94 @@
                         let value = (hash >> (i * 8)) & 0xFF;
                         color += ('00' + value.toString(16)).substr(-2);
                     }
-                    return color;
+                    // currently commented out
+                    // need to figure out a way to get the background color first
+                    return /*fn.helpers.adjustColorToBg(*/color/*)*/;
+                },
+                computeTotalTimeInSeconds(message) {
+                    let time = message.match(/(\d+) (hours?|minutes?|seconds?)/gi);
+                    if (null === time) {
+                        return 0;
+                    }
+                    let total = 0;
+                    time.forEach(i => {
+                        let h = i.match(/(\d+) hour/);
+                        let m = i.match(/(\d+) minut/);
+                        let s = i.match(/(\d+) second/);
+                        if (h) {
+                            total += parseInt(h[1]) * 3600;
+                        }
+                        if (m) {
+                            total += parseInt(m[1]) * 60;
+                        }
+                        if (s) {
+                            total += parseInt(s[1]);
+                        }
+                    });
+                    return total;
+                },
+
+                /** ft. Gimrin - go bug him about hte bulgarian constants */
+                colorLightness(colorChannel) {
+                    if (colorChannel <= 0.03928) {
+                        return colorChannel / 12.92;
+                    }
+                    return (Math.pow(((colorChannel + 0.055) / 1.055), 2.4));
+                },
+                adjustColorToBg(c) {
+                    let color = tinycolor(c);
+                    let bg    = tinycolor("0c0c0c");
+                    console.log(window.getComputedStyle(document.querySelector('body')).backgroundColor.ensureHEXColor());
+
+                    let colorRGB = color.toRgb();
+                    let bgRGB    = bg.toRgb();
+
+                    let cL = 0.2126 * fn.helpers.colorLightness(colorRGB.r / 255) + 0.7152 * fn.helpers.colorLightness(colorRGB.g / 255) + 0.0722 * fn.helpers.colorLightness(colorRGB.b / 255);
+                    let bL = 0.2126 * fn.helpers.colorLightness(bgRGB.r / 255) + 0.7152 * fn.helpers.colorLightness(bgRGB.g / 255) + 0.0722 * fn.helpers.colorLightness(bgRGB.b / 255);
+
+                    let contrast = (Math.max(cL, bL) + 0.05) / (Math.min(cL, bL) + 0.05);
+
+                    if (contrast < 7) {
+                        let amount = (25 + (7 - contrast) / 7 * 25);
+                        if (bg.isDark()) {
+                            color.brighten(amount);
+                        } else {
+                            color.darken(amount);
+                        }
+                    }
+
+                    return color.toHexString();
+
+                },
+
+                /**
+                 * Don't ask, I stole this form Vysn, which is a minified code,
+                 * I just best-guessed the variable names, don't really wanna
+                 * recreate this function myself
+                 *
+                 * @param from
+                 * @param desired
+                 * @param firstCost
+                 * @param nextCost
+                 * @param scale
+                 * @returns {number}
+                 */
+                getNextItemPrice(from, desired, firstCost, nextCost, scale) {
+                    from      = parseFloat(from);
+                    desired   = parseFloat(desired);
+                    firstCost = parseFloat(firstCost);
+                    nextCost  = parseFloat(nextCost);
+                    scale     = parseFloat(scale);
+
+                    let original     = from;
+                    let ratio        = Math.floor((original - 1) / scale) + 1;
+                    let costFromZero = (original) * (firstCost - nextCost) + nextCost * (original * (ratio) - scale * ratio * (ratio - 1) / 2);
+
+                    original         = (from + desired);
+                    ratio            = Math.floor((original - 1) / scale) + 1
+                    let costFromNext = (original) * (firstCost - nextCost) + nextCost * (original * (ratio) - scale * ratio * (ratio - 1) / 2);
+
+                    return costFromNext - costFromZero;
                 }
             },
             /** private / internal / helper methods */
@@ -858,7 +986,7 @@
                     //         }).catch(e => console.error(e));
                     //     }
                     // });
-                    unsafeWindow.roajsstore = VARIABLES.jsstore.tracker.db;
+                    unsafeWindow.roajsstore = VARIABLES.jsstore.db;
                 },
                 getLatestTrackerValues() {
                     VARIABLES.jsstore.db.select({from: TRACKER_TBL_NAME, groupBy: 't'}).then(res => {
@@ -901,6 +1029,20 @@
                     OBSERVERS.toggleable.agility              = fn.helpers.initObserver('agility', 'data-base', 'td#agility');
                     OBSERVERS.toggleable.eventAbbreviator     = OBSERVERS.toggleable.eventAbbreviator();
                     OBSERVERS.toggleable.chatMessagesObserver = OBSERVERS.toggleable.chatMessagesObserver();
+
+                    OBSERVERS.toggleable.houseQuickBuildTimestamps.observe(document.querySelector('#houseQuickBuildList'), {childList: true});
+                    OBSERVERS.toggleable.houseItemBuildTimestamps.observe(document.querySelector('#houseRoomItemLevelUpgradeTimeCost'), {childList: true, characterData: true});
+                },
+
+                loadMarketLatestData() {
+                    log('loading market data');
+                    fetch('https://roa.edvordo.sk/market-tracker-data')
+                        .then(res => res.json())
+                        .then(data => {
+                            data                 = JSON.parse(JSON.stringify(data));
+                            VARIABLES.marketData = data;
+                            setTimeout(fn.__.loadMarketLatestData, 30 * 60 * 1000);
+                        });
                 },
 
                 setupCSS() {
@@ -1223,6 +1365,7 @@
                     setInterval(fn.__.cleanUpTracker, 6 * 60 * 60 * 1000); // every 6 hours
                     setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
                     setInterval(fn.__.saveDatabaseQueue, 5 * 60 * 1000); // every 5 minutes
+                    setTimeout(fn.__.loadMarketLatestData, 10 * 1000);
                 },
                 setupVariables() {
                     // per hour
@@ -1772,9 +1915,9 @@
                     if (null === stat) {
                         return false;
                     }
-                    let totalCount  = 0;
-                    let normalCount = 0;
-                    let growthCount = 0;
+                    let totalCount     = 0;
+                    let normalCount    = 0;
+                    let growthCount    = 0;
                     let multistatCount = 0;
                     for (let section in stat.stats) {
                         if (!stat.stats.hasOwnProperty(section)) {
@@ -1870,7 +2013,6 @@
                         // console.log(JSON.stringify(record.ir, null, '\t')); // will take care of later
                     }
                 },
-
                 dyeUserMessages() {
                     document.querySelectorAll('#chatMessageList > li').forEach(li => {
                         fn.__.dyeUserMessage(li);
@@ -1909,6 +2051,25 @@
                     }
                 },
 
+                computeCryCountForGold(cryPurchasedToday) {
+                    let result = {
+                        can_buy: 0,
+                        price: 0
+                    };
+                    let price  = fn.helpers.getNextItemPrice(cryPurchasedToday, 1, 2E6, 1E6, 1);
+                    if (price > VARIABLES.marketData.Crystal) {
+                        return result;
+                    }
+                    let i = 1;
+                    while (price <= VARIABLES.marketData.Crystal) {
+                        result.price += price;
+                        price = fn.helpers.getNextItemPrice(cryPurchasedToday + (i++), 1, 2E6, 1E6, 1);
+                        result.can_buy++;
+                    }
+
+                    return result;
+                },
+
                 startup() {
                     return {
                         'Initiation IndexedDB ..': fn.__.setupIndexedDB,
@@ -1934,7 +2095,7 @@
                         log(message);
                         startup[message]();
                     }
-                },
+                }
             },
             /** public QoL object methods */
             API    : {
@@ -2412,8 +2573,8 @@
                         }
                         exportData.push(`${ingredient.n}${ingredient.v}`);
                     }
-                    VARIABLES.ingredientExportData = exportData.join('? ') + ' Market';
-                    document.querySelector('#massButtonHolder').style.display = 'block';
+                    VARIABLES.ingredientExportData                                     = exportData.join('? ') + ' Market';
+                    document.querySelector('#massButtonHolder').style.display          = 'block';
                     document.querySelector('#inventoryItemCountWrapper').style.display = 'none';
                     document.querySelectorAll('#massButtonHolder a:not(#RQ-export-ingredients-for-bento)').forEach(a => a.style.display = 'none');
                     document.querySelector('#RQ-export-ingredients-for-bento').classList.remove('hidden');
@@ -2441,6 +2602,43 @@
                     if (true === copy) {
                         document.querySelector('#RQ-auto-sopy-success').textContent = 'Text has been copied automatically ..';
                     }
+                },
+
+                addCrystalsForGoldInfo(data) {
+                    if (false === VARIABLES.marketData.hasOwnProperty('Crystal')) {
+                        setTimeout(fn.API.addCrystalsForGoldInfo, 500, data);
+                        return;
+                    }
+                    // data.ppt // premium purchased today
+                    let message = document.querySelector('#rq-cry-for-gold-info-msg');
+
+                    if (null === message) {
+                        message = document.createElement('div');
+                        message.classList.add('mt10');
+                        message.setAttribute('id', 'rq-cry-for-gold-info-msg');
+                        let parent = document.querySelector('#premium_purchased_today').parentElement;
+                        parent.insertAdjacentElement('afterend', message);
+                    }
+
+                    let computed = fn.__.computeCryCountForGold(data.ppt);
+                    message.innerHTML = `Current cry rate is <span class="gold">${VARIABLES.marketData.Crystal.format()}</span>/cry.<br>
+You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.price.abbr()}</span> gold`;
+
+                    document.getElementById('premium_purchase_gold_count').value = computed.can_buy;
+                },
+
+                houseBuildReadyTimestamp(message) {
+                    let total = fn.helpers.computeTotalTimeInSeconds(message);
+                    if (0 === total) {
+                        return false;
+                    }
+                    let when = moment.tz(GAME_TIME_ZONE).add(total, 'seconds');
+                    setTimeout((when) => {
+                        let span = document.createElement('span');
+                        span.classList.add('small');
+                        span.textContent = ` (${when})`;
+                        document.querySelector('#house_notification').appendChild(span);
+                    }, 100, when.format('MMM DD HH:mm:ss'));
                 }
             },
         };
@@ -2652,9 +2850,19 @@
         }
     });
 
-    $(document).on('click', '#RQ-export-ingredients-for-bento', function(e){
+    $(document).on('click', '#RQ-export-ingredients-for-bento', function (e) {
         e.preventDefault();
         QoL.copyIngredientsExport();
+    });
+
+    $(document).on('roa-ws:page', function (e, data) {
+        if (data.page.match(/^house/) && data.hasOwnProperty('m')) {
+            QoL.houseBuildReadyTimestamp(data.m);
+        }
+    });
+
+    $(document).on('roa-ws:page:purchase_crystals_gold roa-ws:page:boosts', function (e, data) {
+        QoL.addCrystalsForGoldInfo(data);
     });
 
 })(window, jQuery);
