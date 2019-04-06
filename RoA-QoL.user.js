@@ -9,7 +9,7 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180819
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180827
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=190325
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -90,28 +90,30 @@
         };
 
         const DEFAULT_SETTINGS = {
-            badge_stamina            : true,
-            badge_fatigue            : true,
-            badge_event              : true,
-            house_tooltips           : true,
-            event_abbreviation       : true,
-            char_count               : true,
-            command_helper           : false,
-            fame_own_gems            : true,
-            event_ratio_message      : true,
-            event_ratio_chat_prepare : true,
-            set_max_quest_reward     : true,
-            clan_donations_modes     : true,
-            drop_tracker             : true,
-            chat_content_swap        : false,
-            user_color_messages      : true,
-            use_username_based_color : false,
-            prefill_all_to_sell      : false,
-            estimate_quest_completion: true,
-            undercut_by_one          : false,
-            export_ingredients       : true,
-            user_color_set           : {},
-            tracker                  : {
+            badge_stamina              : true,
+            badge_fatigue              : true,
+            badge_event                : true,
+            house_tooltips             : true,
+            event_abbreviation         : true,
+            char_count                 : true,
+            command_helper             : false,
+            fame_own_gems              : true,
+            event_ratio_message        : true,
+            event_ratio_chat_prepare   : true,
+            set_max_quest_reward       : true,
+            clan_donations_modes       : true,
+            drop_tracker               : true,
+            chat_content_swap          : false,
+            user_color_messages        : true,
+            use_username_based_color   : false,
+            prefill_all_to_sell        : false,
+            estimate_quest_completion  : true,
+            undercut_by_one            : false,
+            crystal_shop_cry_info      : false,
+            crystal_shop_prefill_to_buy: false,
+            export_ingredients         : true,
+            user_color_set             : {},
+            tracker                    : {
                 fame          : true,
                 crystals      : true,
                 platinum      : true,
@@ -826,7 +828,7 @@
                     let costFromZero = (original) * (firstCost - nextCost) + nextCost * (original * (ratio) - scale * ratio * (ratio - 1) / 2);
 
                     original         = (from + desired);
-                    ratio            = Math.floor((original - 1) / scale) + 1
+                    ratio            = Math.floor((original - 1) / scale) + 1;
                     let costFromNext = (original) * (firstCost - nextCost) + nextCost * (original * (ratio) - scale * ratio * (ratio - 1) / 2);
 
                     return costFromNext - costFromZero;
@@ -2054,7 +2056,7 @@
                 computeCryCountForGold(cryPurchasedToday) {
                     let result = {
                         can_buy: 0,
-                        price: 0
+                        price  : 0
                     };
                     let price  = fn.helpers.getNextItemPrice(cryPurchasedToday, 1, 2E6, 1E6, 1);
                     if (price > VARIABLES.marketData.Crystal) {
@@ -2621,10 +2623,15 @@
                     }
 
                     let computed = fn.__.computeCryCountForGold(data.ppt);
-                    message.innerHTML = `Current cry rate is <span class="gold">${VARIABLES.marketData.Crystal.format()}</span>/cry.<br>
+                    if (true === VARIABLES.settings.crystal_shop_cry_info) {
+                        message.innerHTML = `Current cry rate is <span class="gold">${VARIABLES.marketData.Crystal.format()}</span>/cry.<br>
 You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.price.abbr()}</span> gold`;
-
-                    document.getElementById('premium_purchase_gold_count').value = computed.can_buy;
+                    }
+                    if (true === VARIABLES.settings.crystal_shop_prefill_to_buy) {
+                        setTimeout((canBuy) => {
+                            document.getElementById('premium_purchase_gold_count').value = canBuy;
+                        }, 500, computed.can_buy);
+                    }
                 },
 
                 houseBuildReadyTimestamp(message) {
@@ -2639,6 +2646,9 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                         span.textContent = ` (${when})`;
                         document.querySelector('#house_notification').appendChild(span);
                     }, 100, when.format('MMM DD HH:mm:ss'));
+                },
+                registerHouseCompleteRoomListObserver() {
+                    
                 }
             },
         };
@@ -2863,6 +2873,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
 
     $(document).on('roa-ws:page:purchase_crystals_gold roa-ws:page:boosts', function (e, data) {
         QoL.addCrystalsForGoldInfo(data);
+    });
+
+    $(document).on('click', '#allHouseUpgrades', function() {
+        QoL.registerHouseCompleteRoomListObserver()
     });
 
 })(window, jQuery);
