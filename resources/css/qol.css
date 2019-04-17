@@ -183,3 +183,15 @@ table#allThemTables > tbody > tr > td > table {
     float: none!important;
     border-left: none;
 }
+
+#massGemSender a {
+    text-decoration: none;
+}
+
+.massGemSenderInput {
+    margin:2px;
+}
+
+#massGemsSenderNum {
+    width:35px; height:21px;
+}
