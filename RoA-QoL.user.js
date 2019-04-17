@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.6.2
+// @version      2.7.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180819
-// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html?rev=180827
+// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css
+// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html
+// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -110,6 +110,7 @@
             estimate_quest_completion: true,
             undercut_by_one          : false,
             export_ingredients       : true,
+            mass_gem_send            : true,
             user_color_set           : {},
             tracker                  : {
                 fame          : true,
@@ -1020,7 +1021,7 @@
                                     <a href="" id="RQ-update-changes-compare" target="_blank" class="'btn btn-link btn-block">View code changes</a>
                                 </td>
                             </tr>
-                        </table>                
+                        </table>
                     </div>
                     <div class="col-md-4">
                         <h4 class="text-center">localStorage status</h4>
@@ -2441,8 +2442,170 @@
                     if (true === copy) {
                         document.querySelector('#RQ-auto-sopy-success').textContent = 'Text has been copied automatically ..';
                     }
+                },
+
+                massGemSend(mode) {
+                    if (!VARIABLES.settings.mass_gem_send) {
+                        return false;
+                    }
+
+                    var list        = [],
+                        listSpliced = [],
+                        listType    = [],
+                        listFinal   = [];
+
+                    for (let gem of $('#mass'+mode+'Table label')) {
+                        list.push(gem)
+                    }
+
+                    $('#selectAllMass' + mode).replaceWith(
+                    `<div id="massGemSender">
+                        <a id="massGemSenderSelectTypeGems">
+                            <p>Select
+                                <input class="massGemSenderInput" id="massGemSenderGemsNum" size="1" type="text">
+                                <select class="massGemSenderInput" id="massGemSenderOrder">
+                                    <option value="top">top</option>
+                                    <option value="bottom">bottom</option>
+                                </select>
+                                <select class="massGemSenderInput" id="massGemSenderGemsType">
+                                    <option value="All" selected="selected">All gems</option>
+                                    <option value="Celer">Celerity</option>
+                                    <option value="Chronoki">Chronokinesis</option>
+                                    <option value="Pierc">Piercing</option>
+                                    <option value="Etch">Etching</option>
+                                    <option value="Harvest">Harvesting</option>
+                                    <option value="Pote">Potency</option>
+                                    <option value="Reckless">Recklessness</option>
+                                    <option value="Recov">Recovery</option>
+                                    <option value="Resilie">Resilience</option>
+                                    <option value="Retribut">Retribution</option>
+                                    <option value="Smith">Smithing</option>
+                                    <option value="Swiftn">Swiftness</option>
+                                    <option value="Charm">Charming</option>
+                                    <option value="Destruct">Destruction</option>
+                                    <option value="Extermin">Exterminating</option>
+                                    <option value="Hunt">Hunting</option>
+                                    <option value="Murder">Murdering</option>
+                                    <option value="Normali">Normalizing</option>
+                                    <option value="Slay">Slaying</option>
+                                    <option value="Solidif">Solidifying</option>
+                                    <option value="Tam">Taming</option>
+                                    <option value="Weath">Weathering</option>
+                                    <option value="Weedwha">Weedwhacking</option>
+                                    <option value="Endura">Endurance</option>
+                                    <option value="Gre">Greed</option>
+                                    <option value="Luck">Luck</option>
+                                    <option value="Mast">Mastery</option>
+                                    <option value="Wis">Wisdom</option>
+                                    <option value="Agil">Agility</option>
+                                    <option value="Elus">Elusion</option>
+                                    <option value="Hea">Health</option>
+                                    <option value="Restorat">Restoration</option>
+                                    <option value="Retaliat">Retaliation</option>
+                                    <option value="Stren">Strength</option>
+                                    <option value="Brawl">Brawling</option>
+                                    <option value="Coordinat">Coordination</option>
+                                    <option value="Duel">Dueling</option>
+                                    <option value="Snip">Sniping</option>
+                                    <option value="Sorc">Sorcery</option>
+                                </select>gems,
+                                <select class="massGemSenderInput" id="massGemSenderIncludeSpliced">
+                                    <option value="Yes" selected="selected">include</option>
+                                    <option value="No">don't include</option>
+                                    <option value="Only">only include</option>
+                                </select> spliced gems
+                            </p>
+                        </a>
+                        <a id="massGemSenderDeselectGems">
+                            <p>
+                                <input class="massGemSenderInput" type="checkbox" checked="true"> deselect currently marked gems
+                            </p>
+                        </a>
+                    </div>`
+                    );
+                        splicedChanged();
+
+                    function splicedChanged() {
+                        listSpliced = [] //clear
+
+                        var include = $('#massGemSenderIncludeSpliced option:selected').val();
+
+                        for (let gem of list) {
+                            let gemText = $(gem).find('span').html();
+                            if (include === 'Yes') {
+                                listSpliced.push(gem)
+                            }
+                            else if (include === 'No'){ //only add non-spliced gems
+                                if(gemText.includes('span') === false) {
+                                    listSpliced.push(gem)
+                                }
+                            }
+                            else if (include === 'Only'){ //only add spliced gems
+                                if(gemText.includes('span')) {
+                                    listSpliced.push(gem)
+                                }
+                            }
+                        }
+                        typeChanged();
+                    }
+
+                    function typeChanged() {
+                        listType = [] //clear
+
+                        var type = $('#massGemSenderGemsType option:selected').val();
+
+                        if (type === 'All') {
+                            for (let gem of listSpliced) {
+                                listType.push(gem);
+                            }
+                        }
+
+                        for (let gem of listSpliced) {
+                            if($(gem).text().includes(type)) {
+                                listType.push(gem)
+                            }
+                        }
+                        $('#massGemSenderGemsNum').val(listType.length);
+                    }
+
+                    function checkGems() {
+                        var gemsNumber = $('#massGemSenderGemsNum').val(),
+                            finalList = [];
+
+                        if( $('#massGemSenderDeselectGems input').is(":checked") ) {
+                            for (let gem of list) { //uncheck gems
+                                $(gem).find('input').prop('checked', false)
+                            }
+                        }
+
+                        for (let gem of listType) {
+                            finalList.push(gem)
+                        }
+
+                        if ( $('#massGemSenderOrder option:selected').val() === 'bottom') {
+                            finalList.reverse();
+                        }
+
+                        for (let gem of finalList) { //apply num filter
+                            if (finalList.indexOf(gem) < gemsNumber) {
+                                $(gem).find('input').prop('checked',true)
+                            }
+                        }
+                    }
+
+                    $(document).on('change', '#massGemSenderIncludeSpliced', function(){
+                        splicedChanged();
+                    });
+
+                    $(document).on('change', '#massGemSenderGemsType', function(){
+                        typeChanged();
+                    });
+
+                    $(document).on('click', '#massGemSenderSelectTypeGems', function(){
+                        checkGems();
+                    });
                 }
-            },
+            }
         };
 
         fn.__.init();
@@ -2656,173 +2819,13 @@
         e.preventDefault();
         QoL.copyIngredientsExport();
     });
-    
-    //MassGemSender:
-    var gs = { //gs stands for GemSelctor
-        inject : function(mode) {
-            gs.list = []; //clear lists
-            gs.listSpliced = [];
-            gs.listType = [];
-            gs.listFinal = [];
-            for (let gem of $('#mass'+mode+'Table label')) {
-                gs.list.push(gem)
-            }
 
-            $('#selectAllMass' + mode).replaceWith( //this is the html buttons section
-				'<div id="massGemSender">'+
-					'<a id="selectTypeGems">'+
-						'<p>'+
-							'Select'+
-							'<input class="gemSenderInput" id="gemsNum" size="14" type="text">'+
-							'<select class="gemSenderInput" id="topBottom">'+
-								'<option value="top">top</option>'+
-								'<option value="bottom">bottom</option>'+
-							'</select>'+
-							'<select class="gemSenderInput" id="gemsType">'+
-								'<option value="All" selected="selected">All gems</option>'+
-								'<option value="Celer">Celerity</option>'+
-								'<option value="Chronokine">Chronokinesis</option>'+
-								'<option value="Pierc">Piercing</option>'+
-								'<option value="Etch">Etching</option>'+
-								'<option value="Harvest">Harvesting</option>'+
-								'<option value="Pote">Potency</option>'+
-								'<option value="Recklessn">Recklessness</option>'+
-								'<option value="Recov">Recovery</option>'+
-								'<option value="Resilie">Resilience</option>'+
-								'<option value="Retribut">Retribution</option>'+
-								'<option value="Smith">Smithing</option>'+
-								'<option value="Swiftn">Swiftness</option>'+
-								'<option value="Charm">Charming</option>'+
-								'<option value="Destruct">Destruction</option>'+
-								'<option value="Exterminat">Exterminating</option>'+
-								'<option value="Hunt">Hunting</option>'+
-								'<option value="Murder">Murdering</option>'+
-								'<option value="Normaliz">Normalizing</option>'+
-								'<option value="Slay">Slaying</option>'+
-								'<option value="Solidify">Solidifying</option>'+
-								'<option value="Tam">Taming</option>'+
-								'<option value="Weather">Weathering</option>'+
-								'<option value="Weedwhack">Weedwhacking</option>'+
-								'<option value="Endura">Endurance</option>'+
-								'<option value="Gre">Greed</option>'+
-								'<option value="Luck">Luck</option>'+
-								'<option value="Mast">Mastery</option>'+
-								'<option value="Wis">Wisdom</option>'+
-								'<option value="Agil">Agility</option>'+
-								'<option value="Elus">Elusion</option>'+
-								'<option value="Hea">Health</option>'+
-								'<option value="Restorat">Restoration</option>'+
-								'<option value="Retaliat">Retaliation</option>'+
-								'<option value="Stren">Strength</option>'+
-								'<option value="Brawl">Brawling</option>'+
-								'<option value="Coordinat">Coordination</option>'+
-								'<option value="Duel">Dueling</option>'+
-								'<option value="Snip">Sniping</option>'+
-								'<option value="Sorc">Sorcery</option>'+
-							'</select>'+
-							'gems,'+
-							'<select class="gemSenderInput" id="includeSpliced">'+
-								'<option value="Yes" selected="selected">include</option>'+
-								'<option value="No">don\'t include</option>'+
-								'<option value="Only">only include</option>'+
-							'</select> spliced gems'+
-						'</p>'+
-					'</a>'+
-	                '<p>'+
-						'<input class="gemSenderInput" id="deselectGems" type="checkbox" checked="true">'+
-                		'<span style="color: #F90;">'+
-                			' deselect currently marked gems'+
-                		'</span>'+
-                	'</p>'+
-				'</div>'
-            );
+    $(document).on('click', '#massGemSend', function(){
+        QoL.massGemSend('GemSend');
+    });
 
-            $('#includeSpliced').change( () => {gs.splicedChanged()} );
-            $('#gemsType').change( () => {gs.typeChanged()} );
-            $('#selectTypeGems').click( () => {gs.chkGems()} );
-            gs.splicedChanged(); //init
-        },
-
-        splicedChanged : function() {
-            var include = $('#includeSpliced option:selected').val();
-            gs.listSpliced = []
-
-            for (let gem of gs.list) {
-                let gemText = $(gem).find('span').html();
-                if (include == 'Yes') {
-                    gs.listSpliced.push(gem)
-                }
-                if (include == 'No'){ //only add non-spliced gems
-                    if(gemText.includes('span') === false) {
-                        gs.listSpliced.push(gem)
-                    }
-                }
-                if (include == 'Only'){ //only add spliced gems
-                    if(gemText.includes('span')) {
-                        gs.listSpliced.push(gem)
-                    }
-                }
-            }
-            gs.typeChanged();
-        },
-
-        typeChanged : function() {
-            var type = $('#gemsType option:selected').val();
-            gs.listType = []
-
-            if (type == 'All') {
-                for (let gem of gs.listSpliced) {
-                    gs.listType.push(gem);
-                }
-            }
-
-            for (let gem of gs.listSpliced) {
-                if($(gem).text().includes(type)) {
-                    gs.listType.push(gem)
-                }
-            }
-            $('#gemsNum').val(gs.listType.length);
-        },
-
-        chkGems : function() {
-            var num = $('#gemsNum').val();
-            gs.listFinal = []
-
-            if( $('#deselectGems').is(":checked") ) {
-                for (let gem of gs.list) { //clear the list
-                    $(gem).find('input').prop('checked', false)
-                }
-            }
-
-            for (let gem of gs.listType) {
-                gs.listFinal.push(gem)
-            }
-
-            if ( $('#topBottom option:selected').val() == 'bottom') {
-                gs.listFinal.reverse();
-            }
-
-            for (let gem of gs.listFinal) { //apply num filter
-                if (gs.listFinal.indexOf(gem) < num) {
-                    $(gem).find('input').prop('checked',true)
-                }
-            }
-        },
-
-        list : [],
-        listSpliced : [],
-        listType : [],
-        listFinal : [],
-    };
-
-    //costum style
-    GM_addStyle(
-        '#massGemSender * {text-decoration: none;}'+
-        '.gemSenderInput {margin:2px;}'+
-        '#gemsNum {width:35px; height:21px;}'
-    );
-
-    $('#massGemSend').click( () => {setTimeout(() => {gs.inject('GemSend')}, 50)} );
-    $('#massDeconstruct').click( () => {setTimeout(() => {gs.inject('Deconstruct')}, 50)} );    
+    $(document).on('click', '#massDeconstruct', function(){
+        QoL.massGemSend('Deconstruct');
+    });
 
 })(window, jQuery);
