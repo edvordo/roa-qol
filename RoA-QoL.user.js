@@ -2604,6 +2604,10 @@
                     $(document).on('click', '#massGemSenderSelectTypeGems', function(){
                         checkGems();
                     });
+
+                    $(document).on('click', '#massGemSenderDeselectGems', function(){
+                        $('#massGemSenderDeselectGemsCheckbox').click();
+                    });
                 }
             }
         };
