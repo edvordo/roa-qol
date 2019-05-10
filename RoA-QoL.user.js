@@ -2516,11 +2516,10 @@
                                 </select> spliced gems
                             </p>
                         </a>
-                        <a id="massGemSenderDeselectGems">
-                            <p>
-                                <input class="massGemSenderInput" type="checkbox" checked="true"> deselect currently marked gems
-                            </p>
-                        </a>
+                        <p>
+                            <input class="massGemSenderInput" type="checkbox" checked="true">
+                            <a id="massGemSenderDeselectGems"> deselect currently marked gems</a>
+                        </p>
                     </div>`
                     );
                         splicedChanged();
@@ -2603,10 +2602,6 @@
 
                     $(document).on('click', '#massGemSenderSelectTypeGems', function(){
                         checkGems();
-                    });
-
-                    $(document).on('click', '#massGemSenderDeselectGems', function(){
-                        $('#massGemSenderDeselectGemsCheckbox').click();
                     });
                 }
             }
