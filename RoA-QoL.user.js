@@ -7,9 +7,9 @@
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css
+// @resource     QoLCSS             https://raw.githubusercontent.com/michaelts1/roa-qol/master/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/master/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://raw.githubusercontent.com/michaelts1/roa-qol/master/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
 // @require      https://rawgit.com/ejci/favico.js/master/favico.js
@@ -20,8 +20,8 @@
 // @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.worker.min.js
 // @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js
-// @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
-// @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
+// @downloadURL  https://github.com/michaelts1/roa-qol/raw/master/RoA-QoL.user.js
+// @updateURL    https://github.com/michaelts1/roa-qol/raw/master/RoA-QoL.user.js
 // @grant        GM_info
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
@@ -2517,9 +2517,10 @@
                             </p>
                         </a>
                         <p>
-                            <input class="massGemSenderInput" type="checkbox" checked="true">
+                            <input class="massGemSenderInput" id="massGemSenderDeselectGemsCheckbox" type="checkbox" checked="true">
                             <a id="massGemSenderDeselectGems"> deselect currently marked gems</a>
                         </p>
+
                     </div>`
                     );
                         splicedChanged();
@@ -2602,6 +2603,10 @@
 
                     $(document).on('click', '#massGemSenderSelectTypeGems', function(){
                         checkGems();
+                    });
+
+                    $(document).on('click', '#massGemSenderDeselectGems', function(){
+                        $('#massGemSenderDeselectGemsCheckbox').click();
                     });
                 }
             }
