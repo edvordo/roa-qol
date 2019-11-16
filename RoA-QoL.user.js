@@ -2156,7 +2156,7 @@
                         VARIABLES.QoLStats.d.BattleGoldPerHour += data.b.g;
                         VARIABLES.QoLStats.d.BattleClanXPPerHour += data.b.hasOwnProperty('cxp') ? data.b.cxp : 0;
                         VARIABLES.QoLStats.d.BattleClanGoldPerHour += data.b.hasOwnProperty('cg') ? data.b.cg : 0;
-                        VARIABLES.QoLStats.PlXPReq = data.p.level.tnl;
+                        VARIABLES.QoLStats.PlXPReq = data.p.currentXP / (data.p.levelPercent / 100);
                         if (VARIABLES.QoLStats.PlXPReq > 0 && data.b.r === 1) { // won
                             let eta;
                             if (data.b.xp === 0) {
