@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.7.1
+// @version      2.7.2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -210,7 +210,7 @@
                 subtab: 'platinum',
             },
 
-            trackerHistoryThreshold: moment.tz(GAME_TIME_ZONE).subtract(14, 'days').format('YYYY-MM-DD 00:00:00'),
+            trackerHistoryThreshold: () => moment.tz(GAME_TIME_ZONE).subtract(14, 'days').format('YYYY-MM-DD 00:00:00'),
 
             drop_tracker: {
                 trackerStart: moment.tz(GAME_TIME_ZONE).format('Do MMM Y HH:mm:ss'),
@@ -1365,6 +1365,7 @@
                 setupLoops() {
                     setTimeout(fn.__.checkForUpdate, 10 * 1000);
                     setInterval(fn.__.cleanUpTracker, 6 * 60 * 60 * 1000); // every 6 hours
+                    setTimeout(fn.__.cleanUpTracker, 5 * 60 * 1000); // First one after 5 minutes
                     setInterval(fn.__.resetFavico, 30 * 1000); // every 30 seconds
                     setInterval(fn.__.saveDatabaseQueue, 5 * 60 * 1000); // every 5 minutes
                     setTimeout(fn.__.loadMarketLatestData, 10 * 1000);
@@ -1638,7 +1639,7 @@
                         from : TRACKER_TBL_NAME,
                         where: {
                             ts: {
-                                '<=': VARIABLES.trackerHistoryThreshold
+                                '<=': VARIABLES.trackerHistoryThreshold()
                             }
                         }
                     });
@@ -1646,7 +1647,7 @@
                         from : AVGDMGSTR_TBL_NAME,
                         where: {
                             ts: {
-                                '<=': VARIABLES.trackerHistoryThreshold
+                                '<=': VARIABLES.trackerHistoryThreshold()
                             }
                         }
                     });
