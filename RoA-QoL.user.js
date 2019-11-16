@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.7.0
+// @version      2.7.1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -1412,12 +1412,6 @@
                 },
                 setupLevelRequirements(player) {
                     VARIABLES.QoLStats.PlXPReq    = player.levelCost;
-                    VARIABLES.QoLStats.FoodXPReq  = player.fishing.tnl;
-                    VARIABLES.QoLStats.WoodXPReq  = player.woodcutting.tnl;
-                    VARIABLES.QoLStats.IronXPReq  = player.mining.tnl;
-                    VARIABLES.QoLStats.StoneXPReq = player.stonecutting.tnl;
-                    VARIABLES.QoLStats.CrftXPReq  = player.crafting.tnl;
-                    VARIABLES.QoLStats.CarvXPReq  = player.carving.tnl;
                 },
 
                 localStorageStats() {
@@ -1617,24 +1611,26 @@
                     if (null === VARIABLES.jsstore.avg_dmg.latest) {
                         VARIABLES.jsstore.avg_dmg.latest = {};
                     }
-                    if (VARIABLES.jsstore.avg_dmg.latest.hasOwnProperty(battle.p.strength.base)) {
-                        VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base].a++;
-                        VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base].d += battle.b.p.dm;
-                    } else {
-                        if (Object.keys(VARIABLES.jsstore.avg_dmg.latest).length > 0) {
-                            let key = Object.keys(VARIABLES.jsstore.avg_dmg.latest).pop();
+                    if(battle.p.strength) {
+                        if (VARIABLES.jsstore.avg_dmg.latest.hasOwnProperty(battle.p.strength.base)) {
+                            VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base].a++;
+                            VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base].d += battle.b.p.dm;
+                        } else {
+                            if (Object.keys(VARIABLES.jsstore.avg_dmg.latest).length > 0) {
+                                let key = Object.keys(VARIABLES.jsstore.avg_dmg.latest).pop();
 
-                            DB_QUEUE[AVGDMGSTR_TBL_NAME].push(VARIABLES.jsstore.avg_dmg.latest[key]);
-                            delete VARIABLES.jsstore.avg_dmg.latest[key];
+                                DB_QUEUE[AVGDMGSTR_TBL_NAME].push(VARIABLES.jsstore.avg_dmg.latest[key]);
+                                delete VARIABLES.jsstore.avg_dmg.latest[key];
+                            }
+                            VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base] = {
+                                ts: ts.format(),
+                                s : battle.p.strength.base,
+                                dt: battle.p.strength.total,
+                                a : 1,
+                                d : battle.b.p.dm,
+                                t : dmgType
+                            };
                         }
-                        VARIABLES.jsstore.avg_dmg.latest[battle.p.strength.base] = {
-                            ts: ts.format(),
-                            s : battle.p.strength.base,
-                            dt: battle.p.strength.total,
-                            a : 1,
-                            d : battle.b.p.dm,
-                            t : dmgType
-                        };
                     }
                 },
                 cleanUpTracker() {
