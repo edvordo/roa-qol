@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.7.2
+// @version      2.7.3
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -1971,6 +1971,11 @@
                     if (!VARIABLES.settings.estimate_quest_completion) {
                         return;
                     }
+
+                    if (!quest) {
+                        return;
+                    }
+
                     if (1 === quest.a) {
                         document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = ``);
                         return;
