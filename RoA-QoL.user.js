@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.7.3
+// @version      2.8.0-dev
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -2651,6 +2651,49 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                 },
                 registerHouseCompleteRoomListObserver() {
                     
+                },
+                addMobJumpButtons() {
+                    const jumpPreviousQuestMobButtonId = 'roaJumpPreviousMob';
+                    const jumpPreviousQuestMobButtonSelector = '#' + jumpPreviousQuestMobButtonId;
+                    const jumpNextQuestMobButtonId = 'roaJumpNextMob';
+                    const jumpNextQuestMobButtonSelector = '#' + jumpNextQuestMobButtonId;
+                
+                    const addQuestMobIfNeeded = (newValue, newName) => {
+                        if($(`#quest_enemy_list option[value="${newValue}"]`).length === 0) {
+                            $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`)
+                        }
+                    }
+                
+                    const jumpQuestMob = (jumpOffset) => {
+                        const selectedQuestMob = $('#quest_enemy_list').children('option:selected');
+                        const oldValue = parseInt(selectedQuestMob.attr('value'));
+                        const oldName = selectedQuestMob.attr('name');
+                
+                        const newValue = oldValue + (11 * jumpOffset);
+                        
+                        if(newValue > 626) {
+                            const newName = oldName.split('#')[0] +'#' + (newValue - 626);
+                            addQuestMobIfNeeded(newValue, newName);
+                        }
+                
+                        $('#quest_enemy_list').val(newValue);
+                    }
+
+                    if($(jumpPreviousQuestMobButtonSelector).length === 0) {
+                        $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;">`);
+                        
+                        $(document).on('click', jumpPreviousQuestMobButtonSelector, () => {
+                            jumpQuestMob(-1);
+                        });
+                    }
+                    
+                    if($(jumpNextQuestMobButtonSelector).length === 0) {
+                        $('.questRequest[data-questtype="kill"]').after(`<input type="button" id="${jumpNextQuestMobButtonId}" value="Jump Forward" style="margin-left: 5px; padding: 6.5px;">`);
+                        
+                        $(document).on('click', jumpNextQuestMobButtonSelector, () => {
+                            jumpQuestMob(1);
+                        });
+                    }
                 }
             },
         };
@@ -2879,6 +2922,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
 
     $(document).on('click', '#allHouseUpgrades', function() {
         QoL.registerHouseCompleteRoomListObserver()
+    });
+
+    $(document).on('roa-ws:page:quests', function() {
+        QoL.addMobJumpButtons();
     });
 
 })(window, jQuery);
