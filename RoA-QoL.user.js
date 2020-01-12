@@ -1,24 +1,24 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.0-dev
+// @version      2.8.0-dev.2
 // @description  try to take over the world!
 // @author       Reltorakii
-// @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
+// @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180819
-// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=190325
+// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/css/qol.css
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/templates/header.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
-// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
-// @require      https://rawgit.com/ejci/favico.js/master/favico.js
-// @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
-// @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
-// @require      https://cdn.rawgit.com/markdown-it/markdown-it/8.4.1/dist/markdown-it.min.js
+// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/common.js
+// @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
+// @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
+// @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
+// @require      https://cdn.jsdelivr.net/gh/markdown-it/markdown-it@8.4.1/dist/markdown-it.min.js
 // @require      https://cdn.jsdelivr.net/npm/vue
-// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.worker.min.js
-// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.min.js
+// @require      https://cdn.jsdelivr.net/gh/ujjwalguptaofficial/JsStore@2.3.1/dist/jsstore.worker.min.js
+// @require      https://cdn.jsdelivr.net/gh/ujjwalguptaofficial/JsStore@2.3.1/dist/jsstore.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
