@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.0-dev
+// @version      2.8.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
@@ -2205,12 +2205,12 @@
                         let token                 = data.a.r;
                         token                     = token.charAt(0).toUpperCase() + token.substr(1) + 'XPReq';
                         let skill                 = data.a.s;
-                        VARIABLES.QoLStats[token] = data.p[skill].tnl;
+                        VARIABLES.QoLStats[token] = data.p.currentXP / (data.p.levelPercent / 100);
                         let eta;
                         if (data.a.xp === 0) {
                             eta = 'never';
                         } else {
-                            eta = (VARIABLES.QoLStats[token] - data.p[skill].xp) / data.a.xp * data.p.next_action;
+                            eta = (VARIABLES.QoLStats[token] - data.p.currentXP) / data.a.xp * data.p.next_action;
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -2240,12 +2240,12 @@
                     if (data.hasOwnProperty('a')) {
                         VARIABLES.QoLStats.d.CTXPPerHour += data.a.xp;
                         let token                 = 'CTXPReq';
-                        VARIABLES.QoLStats[token] = data.p.crafting.tnl;
+                        VARIABLES.QoLStats[token] = data.p.currentXP / (data.p.levelPercent / 100);
                         let eta;
                         if (data.a.xp === 0) {
                             eta = 'never';
                         } else {
-                            eta = (VARIABLES.QoLStats[token] - data.p.crafting.xp) / data.a.xp * data.p.next_action;
+                            eta = (VARIABLES.QoLStats[token] - data.p.currentXP) / data.a.xp * data.p.next_action;
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -2275,12 +2275,12 @@
                     if (data.hasOwnProperty('a')) {
                         VARIABLES.QoLStats.d.CAXPPerHour += data.a.xp;
                         let token                 = 'CAXPReq';
-                        VARIABLES.QoLStats[token] = data.p.carving.tnl;
+                        VARIABLES.QoLStats[token] = data.p.currentXP / (data.p.levelPercent / 100);
                         let eta;
                         if (data.a.xp === 0) {
                             eta = 'never';
                         } else {
-                            eta = (VARIABLES.QoLStats[token] - data.p.carving.xp) / data.a.xp * data.p.next_action;
+                            eta = (VARIABLES.QoLStats[token] - data.p.currentXP) / data.a.xp * data.p.next_action;
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -2667,16 +2667,15 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                     const jumpQuestMob = (jumpOffset) => {
                         const selectedQuestMob = $('#quest_enemy_list').children('option:selected');
                         const oldValue = parseInt(selectedQuestMob.attr('value'));
-                        const oldName = selectedQuestMob.attr('name');
-                
-                        const newValue = oldValue + (11 * jumpOffset);
                         
-                        if(newValue > 626) {
+                        if(oldValue > 626) {
+                            const oldName = selectedQuestMob.attr('name');
+                            const newValue = oldValue + (11 * jumpOffset);
                             const newName = oldName.split('#')[0] +'#' + (newValue - 626);
                             addQuestMobIfNeeded(newValue, newName);
+                            $('#quest_enemy_list').val(newValue);
                         }
                 
-                        $('#quest_enemy_list').val(newValue);
                     }
 
                     if($(jumpPreviousQuestMobButtonSelector).length === 0) {
