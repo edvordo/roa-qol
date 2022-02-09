@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.0
+// @version      2.8.1
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/img/logo-32.png
@@ -16,7 +16,7 @@
 // @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
 // @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
 // @require      https://cdn.jsdelivr.net/gh/markdown-it/markdown-it@8.4.1/dist/markdown-it.min.js
-// @require      https://cdn.jsdelivr.net/npm/vue
+// @require      https://cdn.jsdelivr.net/npm/vue@2.6.14
 // @require      https://cdn.jsdelivr.net/gh/ujjwalguptaofficial/JsStore@2.3.1/dist/jsstore.worker.min.js
 // @require      https://cdn.jsdelivr.net/gh/ujjwalguptaofficial/JsStore@2.3.1/dist/jsstore.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js
