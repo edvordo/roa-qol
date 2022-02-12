@@ -1,24 +1,24 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.7.3
+// @version      2.8.1
 // @description  try to take over the world!
 // @author       Reltorakii
-// @icon         https://rawgit.com/edvordo/roa-qol/master/resources/img/logo-32.png?rev=180707
+// @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://rawgit.com/edvordo/roa-qol/master/resources/css/qol.css?rev=180819
-// @resource     QoLHeaderHTML      https://rawgit.com/edvordo/roa-qol/master/resources/templates/header.html?rev=180707
-// @resource     QoLSettingsHTML    https://rawgit.com/edvordo/roa-qol/dev/resources/templates/settings.html?rev=190325
+// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/css/qol.css
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/templates/header.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
-// @require      https://rawgit.com/edvordo/roa-qol/master/common.js?rev=180730
-// @require      https://rawgit.com/ejci/favico.js/master/favico.js
-// @require      https://cdn.rawgit.com/omichelsen/compare-versions/v3.1.0/index.js
-// @require      https://raw.githubusercontent.com/lodash/lodash/4.17.4/dist/lodash.min.js
-// @require      https://cdn.rawgit.com/markdown-it/markdown-it/8.4.1/dist/markdown-it.min.js
-// @require      https://cdn.jsdelivr.net/npm/vue
-// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.worker.min.js
-// @require      https://rawgit.com/ujjwalguptaofficial/JsStore/2.3.1/dist/jsstore.min.js
+// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/common.js
+// @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
+// @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
+// @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
+// @require      https://cdn.jsdelivr.net/gh/markdown-it/markdown-it@8.4.1/dist/markdown-it.min.js
+// @require      https://cdn.jsdelivr.net/npm/vue@2.6.14
+// @require      https://cdn.jsdelivr.net/gh/ujjwalguptaofficial/JsStore@2.3.1/dist/jsstore.worker.min.js
+// @require      https://cdn.jsdelivr.net/gh/ujjwalguptaofficial/JsStore@2.3.1/dist/jsstore.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js
 // @downloadURL  https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
 // @updateURL    https://github.com/edvordo/roa-qol/raw/master/RoA-QoL.user.js
@@ -2205,12 +2205,12 @@
                         let token                 = data.a.r;
                         token                     = token.charAt(0).toUpperCase() + token.substr(1) + 'XPReq';
                         let skill                 = data.a.s;
-                        VARIABLES.QoLStats[token] = data.p[skill].tnl;
+                        VARIABLES.QoLStats[token] = data.p.currentXP / (data.p.levelPercent / 100);
                         let eta;
                         if (data.a.xp === 0) {
                             eta = 'never';
                         } else {
-                            eta = (VARIABLES.QoLStats[token] - data.p[skill].xp) / data.a.xp * data.p.next_action;
+                            eta = (VARIABLES.QoLStats[token] - data.p.currentXP) / data.a.xp * data.p.next_action;
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -2240,12 +2240,12 @@
                     if (data.hasOwnProperty('a')) {
                         VARIABLES.QoLStats.d.CTXPPerHour += data.a.xp;
                         let token                 = 'CTXPReq';
-                        VARIABLES.QoLStats[token] = data.p.crafting.tnl;
+                        VARIABLES.QoLStats[token] = data.p.currentXP / (data.p.levelPercent / 100);
                         let eta;
                         if (data.a.xp === 0) {
                             eta = 'never';
                         } else {
-                            eta = (VARIABLES.QoLStats[token] - data.p.crafting.xp) / data.a.xp * data.p.next_action;
+                            eta = (VARIABLES.QoLStats[token] - data.p.currentXP) / data.a.xp * data.p.next_action;
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -2275,12 +2275,12 @@
                     if (data.hasOwnProperty('a')) {
                         VARIABLES.QoLStats.d.CAXPPerHour += data.a.xp;
                         let token                 = 'CAXPReq';
-                        VARIABLES.QoLStats[token] = data.p.carving.tnl;
+                        VARIABLES.QoLStats[token] = data.p.currentXP / (data.p.levelPercent / 100);
                         let eta;
                         if (data.a.xp === 0) {
                             eta = 'never';
                         } else {
-                            eta = (VARIABLES.QoLStats[token] - data.p.carving.xp) / data.a.xp * data.p.next_action;
+                            eta = (VARIABLES.QoLStats[token] - data.p.currentXP) / data.a.xp * data.p.next_action;
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
@@ -2651,6 +2651,48 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                 },
                 registerHouseCompleteRoomListObserver() {
                     
+                },
+                addMobJumpButtons() {
+                    const jumpPreviousQuestMobButtonId = 'roaJumpPreviousMob';
+                    const jumpPreviousQuestMobButtonSelector = '#' + jumpPreviousQuestMobButtonId;
+                    const jumpNextQuestMobButtonId = 'roaJumpNextMob';
+                    const jumpNextQuestMobButtonSelector = '#' + jumpNextQuestMobButtonId;
+                
+                    const addQuestMobIfNeeded = (newValue, newName) => {
+                        if($(`#quest_enemy_list option[value="${newValue}"]`).length === 0) {
+                            $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`)
+                        }
+                    }
+                
+                    const jumpQuestMob = (jumpOffset) => {
+                        const selectedQuestMob = $('#quest_enemy_list').children('option:selected');
+                        const oldValue = parseInt(selectedQuestMob.attr('value'));
+                        
+                        if(oldValue > 626) {
+                            const oldName = selectedQuestMob.attr('name');
+                            const newValue = oldValue + (11 * jumpOffset);
+                            const newName = oldName.split('#')[0] +'#' + (newValue - 626);
+                            addQuestMobIfNeeded(newValue, newName);
+                            $('#quest_enemy_list').val(newValue);
+                        }
+                
+                    }
+
+                    if($(jumpPreviousQuestMobButtonSelector).length === 0) {
+                        $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;">`);
+                        
+                        $(document).on('click', jumpPreviousQuestMobButtonSelector, () => {
+                            jumpQuestMob(-1);
+                        });
+                    }
+                    
+                    if($(jumpNextQuestMobButtonSelector).length === 0) {
+                        $('.questRequest[data-questtype="kill"]').after(`<input type="button" id="${jumpNextQuestMobButtonId}" value="Jump Forward" style="margin-left: 5px; padding: 6.5px;">`);
+                        
+                        $(document).on('click', jumpNextQuestMobButtonSelector, () => {
+                            jumpQuestMob(1);
+                        });
+                    }
                 }
             },
         };
@@ -2879,6 +2921,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
 
     $(document).on('click', '#allHouseUpgrades', function() {
         QoL.registerHouseCompleteRoomListObserver()
+    });
+
+    $(document).on('roa-ws:page:quests', function() {
+        QoL.addMobJumpButtons();
     });
 
 })(window, jQuery);
