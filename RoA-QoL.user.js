@@ -371,8 +371,10 @@
                                     let spans                 = m.addedNodes[0].querySelectorAll('span');
                                     m.addedNodes[0].innerHTML = '';
 
-                                    m.addedNodes[0].appendChild(document.createTextNode('\u2194'));
+                                    m.addedNodes[0].appendChild(document.createTextNode('\u2194 '));
+                                    spans[1].textContent = parseFloat(spans[1].textContent.replace(/,/g, '')).abbr();
                                     m.addedNodes[0].appendChild(spans[1]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(' counter damage'));
                                     m.addedNodes[0].appendChild(document.createTextNode(` (${parse[1]})`));
                                 } else if ((parse = a.match(regexes.bosshit)) !== null) {
                                     let span                  = m.addedNodes[0].querySelector('span:last-child');
