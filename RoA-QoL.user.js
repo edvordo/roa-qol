@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.1
+// @version      2.8.2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/img/logo-32.png
@@ -371,8 +371,12 @@
                                     let spans                 = m.addedNodes[0].querySelectorAll('span');
                                     m.addedNodes[0].innerHTML = '';
 
-                                    m.addedNodes[0].appendChild(document.createTextNode('\u2194'));
+                                    m.addedNodes[0].appendChild(document.createTextNode('\u2194 '));
+                                    let originalDamage = spans[1].textContent
+                                    spans[1].textContent = parseFloat(spans[1].textContent.replace(/,/g, '')).abbr();
+                                    spans[1].setAttribute('title', originalDamage);
                                     m.addedNodes[0].appendChild(spans[1]);
+                                    m.addedNodes[0].appendChild(document.createTextNode(' counter damage'));
                                     m.addedNodes[0].appendChild(document.createTextNode(` (${parse[1]})`));
                                 } else if ((parse = a.match(regexes.bosshit)) !== null) {
                                     let span                  = m.addedNodes[0].querySelector('span:last-child');
