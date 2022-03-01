@@ -372,7 +372,9 @@
                                     m.addedNodes[0].innerHTML = '';
 
                                     m.addedNodes[0].appendChild(document.createTextNode('\u2194 '));
+                                    let originalDamage = spans[1].textContent
                                     spans[1].textContent = parseFloat(spans[1].textContent.replace(/,/g, '')).abbr();
+                                    spans[1].setAttribute('title', originalDamage);
                                     m.addedNodes[0].appendChild(spans[1]);
                                     m.addedNodes[0].appendChild(document.createTextNode(' counter damage'));
                                     m.addedNodes[0].appendChild(document.createTextNode(` (${parse[1]})`));
