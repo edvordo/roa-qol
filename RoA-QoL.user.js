@@ -113,6 +113,7 @@
             crystal_shop_prefill_to_buy: false,
             export_ingredients         : true,
             user_color_set             : {},
+            timer_estimates            : false,
             tracker                    : {
                 fame          : true,
                 crystals      : true,
@@ -2303,6 +2304,30 @@
                         fn.helpers.updateFavico(data.p.autos_remaining);
                     }
                 },
+                updateTimerEstimates(data) {
+                    if (true !== VARIABLES.settings.timer_estimates) {
+                        return;
+                    }
+                    if (false === data.hasOwnProperty('results')) {
+                        return;
+                    }
+                    if (false === data.results.hasOwnProperty('p')) {
+                        return;
+                    }
+                    const { next_action, autos_max, autos_remaining } = data.results.p
+
+                    if (!$('#autosRemaining').attr('data-toggle')) {
+                        $('#autosRemaining').attr('data-toggle', 'tooltip').tooltip({placement: 'bottom center', container: 'body', html: true})
+                    }
+                    if (!$('#autosMaximum').attr('data-toggle')) {
+                        $('#autosMaximum').attr('data-toggle', 'tooltip').tooltip({placement: 'bottom center', container: 'body', html: true})
+                    }
+
+                    let tmpl = '<h5>Based upon</h5>{next_action}s action timer <h5>Good for</h5>{estimate}';
+
+                    $('#autosRemaining').attr({'data-original-title': tmpl.formatQoL({next_action: (next_action / 1000).toFixed(3), estimate: (autos_remaining * next_action).toTimeRemaining()})})
+                    $('#autosMaximum').attr({'data-original-title': tmpl.formatQoL({next_action: (next_action / 1000).toFixed(3), estimate: (autos_max * next_action).toTimeRemaining()})})
+                },
                 processEventUpdate(message) {
                     fn.helpers.togglePerHourSection('event-update');
 
@@ -2743,6 +2768,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
     });
 
     $(document).on('roa-ws:page:settings_preferences, roa-ws:page:settings_preferences_change', function (e, d) {
+    $(document).on('roa-ws:battle roa-ws:harvest roa-ws:craft roa-ws:carve', function (e, data) {
+        QoL.updateTimerEstimates(data)
+    });
+
         // 12 is the relevant option ..
         // d.preferences[12] can be "0" or "1" (yes, string) => 0 - default, 1 - retarded
         QoL.setChatDirection(d.preferences[12] === '1' ? 'down' : 'up');
