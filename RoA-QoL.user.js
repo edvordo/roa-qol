@@ -44,7 +44,7 @@
 
     let QoL = (function QoL() {
 
-        const GAME_TIME_ZONE = 'America/New_York';
+        const GAME_TIME_ZONE = 'UTC';
 
         const INTERNAL_UPDATE_URI   = 'https://api.github.com/repos/edvordo/roa-qol/contents/RoA-QoL.user.js';
         const INTERNAL_TAGS_URL     = 'https://api.github.com/repos/edvordo/roa-qol/tags';
