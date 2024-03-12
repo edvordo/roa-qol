@@ -4,14 +4,14 @@
 // @version      2.8.2
 // @description  try to take over the world!
 // @author       Reltorakii
-// @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/img/logo-32.png
+// @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/css/qol.css
-// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/resources/templates/settings.html
+// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/css/qol.css
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/templates/header.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
-// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.0-dev.2/common.js
+// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol/common.js
 // @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
 // @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
 // @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
@@ -2654,24 +2654,24 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                     }, 100, when.format('MMM DD HH:mm:ss'));
                 },
                 registerHouseCompleteRoomListObserver() {
-                    
+
                 },
                 addMobJumpButtons() {
                     const jumpPreviousQuestMobButtonId = 'roaJumpPreviousMob';
                     const jumpPreviousQuestMobButtonSelector = '#' + jumpPreviousQuestMobButtonId;
                     const jumpNextQuestMobButtonId = 'roaJumpNextMob';
                     const jumpNextQuestMobButtonSelector = '#' + jumpNextQuestMobButtonId;
-                
+
                     const addQuestMobIfNeeded = (newValue, newName) => {
                         if($(`#quest_enemy_list option[value="${newValue}"]`).length === 0) {
                             $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`)
                         }
                     }
-                
+
                     const jumpQuestMob = (jumpOffset) => {
                         const selectedQuestMob = $('#quest_enemy_list').children('option:selected');
                         const oldValue = parseInt(selectedQuestMob.attr('value'));
-                        
+
                         if(oldValue > 626) {
                             const oldName = selectedQuestMob.attr('name');
                             const newValue = oldValue + (11 * jumpOffset);
@@ -2679,20 +2679,20 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                             addQuestMobIfNeeded(newValue, newName);
                             $('#quest_enemy_list').val(newValue);
                         }
-                
+
                     }
 
                     if($(jumpPreviousQuestMobButtonSelector).length === 0) {
                         $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;">`);
-                        
+
                         $(document).on('click', jumpPreviousQuestMobButtonSelector, () => {
                             jumpQuestMob(-1);
                         });
                     }
-                    
+
                     if($(jumpNextQuestMobButtonSelector).length === 0) {
                         $('.questRequest[data-questtype="kill"]').after(`<input type="button" id="${jumpNextQuestMobButtonId}" value="Jump Forward" style="margin-left: 5px; padding: 6.5px;">`);
-                        
+
                         $(document).on('click', jumpNextQuestMobButtonSelector, () => {
                             jumpQuestMob(1);
                         });
