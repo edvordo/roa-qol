@@ -2767,11 +2767,11 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
         QoL.handleHouseData('room', data);
     });
 
-    $(document).on('roa-ws:page:settings_preferences, roa-ws:page:settings_preferences_change', function (e, d) {
     $(document).on('roa-ws:battle roa-ws:harvest roa-ws:craft roa-ws:carve', function (e, data) {
-        QoL.updateTimerEstimates(data)
+        QoL.updateTimerEstimates(data);
     });
 
+    $(document).on('roa-ws:page:settings_preferences, roa-ws:page:settings_preferences_change', function (e, d) {
         // 12 is the relevant option ..
         // d.preferences[12] can be "0" or "1" (yes, string) => 0 - default, 1 - retarded
         QoL.setChatDirection(d.preferences[12] === '1' ? 'down' : 'up');
