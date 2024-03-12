@@ -4,14 +4,14 @@
 // @version      2.8.3
 // @description  try to take over the world!
 // @author       Reltorakii
-// @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/img/logo-32.png
+// @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.3/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/css/qol.css
-// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol/resources/templates/settings.html
+// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.3/resources/css/qol.css
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.3/resources/templates/header.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.3/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
-// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol/common.js
+// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.3/common.js
 // @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
 // @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
 // @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
