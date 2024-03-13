@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.4
+// @version      2.8.5
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -2122,7 +2122,8 @@
                     if (!VARIABLES.settings.house_tooltips) {
                         return;
                     }
-                    if (type === 'house') {
+                    // when viewing other players' house there is no rooms property, triggers error
+                    if (type === 'house' && data.hasOwnProperty('rooms')) {
                         fn.__.updateRooms(data.rooms);
                     } else if (type === 'room') {
                         fn.__.updateHouseRoom(data.room.room_type, data.room.items);
@@ -2708,19 +2709,35 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                     }
 
                     if($(jumpPreviousQuestMobButtonSelector).length === 0) {
-                        $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;">`);
+                        $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;" data-toggle="tooltip" title="Press and hold to cycle throught mobs in rapid succession">`);
+
+                        $(jumpPreviousQuestMobButtonSelector).tooltip({placement: 'auto left', container: 'body', html: true})
 
                         $(document).on('click', jumpPreviousQuestMobButtonSelector, () => {
                             jumpQuestMob(-1);
                         });
+
+                        let jumpInterval = null;
+                        $(document).on('mousedown', jumpPreviousQuestMobButtonSelector, _.debounce(() => {
+                            jumpInterval = setInterval(() => jumpQuestMob(-1), 50)
+                        }, 500));
+                        $(document).on('mouseup mouseleave', jumpPreviousQuestMobButtonSelector, (e) => clearInterval(jumpInterval))
                     }
 
                     if($(jumpNextQuestMobButtonSelector).length === 0) {
-                        $('.questRequest[data-questtype="kill"]').after(`<input type="button" id="${jumpNextQuestMobButtonId}" value="Jump Forward" style="margin-left: 5px; padding: 6.5px;">`);
+                        $('.questRequest[data-questtype="kill"]').after(`<input type="button" id="${jumpNextQuestMobButtonId}" value="Jump Forward" style="margin-left: 5px; padding: 6.5px;" data-toggle="tooltip" title="Press and hold to cycle throught mobs in rapid succession">`);
+
+                        $(jumpNextQuestMobButtonSelector).tooltip({placement: 'auto right', container: 'body', html: true})
 
                         $(document).on('click', jumpNextQuestMobButtonSelector, () => {
                             jumpQuestMob(1);
                         });
+
+                        let jumpInterval = null;
+                        $(document).on('mousedown', jumpNextQuestMobButtonSelector, _.debounce(() => {
+                            jumpInterval = setInterval(() => jumpQuestMob(1), 50)
+                        }, 500));
+                        $(document).on('mouseup mouseleave', jumpNextQuestMobButtonSelector, (e) => clearInterval(jumpInterval))
                     }
                 }
             },
