@@ -7,7 +7,7 @@
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@50d84456/resources/css/qol.css
+// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
@@ -114,6 +114,8 @@
             export_ingredients         : true,
             user_color_set             : {},
             timer_estimates            : false,
+            jump_mobs_increment        : 11,
+            jump_mobs_speed            : 50,
             tracker                    : {
                 fame          : true,
                 crystals      : true,
@@ -837,7 +839,24 @@
                     let costFromNext = (original) * (firstCost - nextCost) + nextCost * (original * (ratio) - scale * ratio * (ratio - 1) / 2);
 
                     return costFromNext - costFromZero;
-                }
+                },
+                jumpQuestMob(jumpOffset) {
+                    const selectedQuestMob = $('#quest_enemy_list').children('option:selected');
+                    const oldValue = parseInt(selectedQuestMob.attr('value'));
+
+                    if(oldValue > 626) {
+                        const oldName = selectedQuestMob.attr('name');
+                        const newValue = oldValue + (VARIABLES.settings.jump_mobs_increment * jumpOffset);
+                        const newName = oldName.split('#')[0] +'#' + (newValue - 626);
+                        fn.helpers.addQuestMobIfNeeded(newValue, newName);
+                        $('#quest_enemy_list').val(newValue);
+                    }
+                },
+                addQuestMobIfNeeded(newValue, newName) {
+                    if($(`#quest_enemy_list option[value="${newValue}"]`).length === 0) {
+                        $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`)
+                    }
+                },
             },
             /** private / internal / helper methods */
             __     : {
@@ -1540,6 +1559,9 @@
                         if (element.type === 'checkbox') {
                             VARIABLES.settings[setting] = !!element.checked;
                         }
+                        if (element.type === 'number') {
+                            VARIABLES.settings[setting] = Number(element.value);
+                        }
                     } else if (hierarchy.length === 2) {
                         let [top, sub] = hierarchy;
                         if (!VARIABLES.settings.hasOwnProperty(top) || !VARIABLES.settings[top].hasOwnProperty(sub)) {
@@ -1547,6 +1569,9 @@
                         }
                         if (element.type === 'checkbox') {
                             VARIABLES.settings[top][sub] = !!element.checked;
+                        }
+                        if (element.type === 'number') {
+                            VARIABLES.settings[setting] = Number(element.value);
                         }
                     }
                     fn.__.applySettings();
@@ -2692,28 +2717,12 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                 addMobJumpButtons() {
                     const jumpPreviousQuestMobButtonId = 'roaJumpPreviousMob';
                     const jumpPreviousQuestMobButtonSelector = '#' + jumpPreviousQuestMobButtonId;
+                    const jumpQuestMobIntervalId = 'roaMobInterval';
+                    const jumpQuestMobIntervalSelector = '#' + jumpQuestMobIntervalId;
+                    const jumpQuestMobSpeedId = 'roaMobSpeed';
+                    const jumpQuestMobSpeedSelector = '#' + jumpQuestMobSpeedId;
                     const jumpNextQuestMobButtonId = 'roaJumpNextMob';
                     const jumpNextQuestMobButtonSelector = '#' + jumpNextQuestMobButtonId;
-
-                    const addQuestMobIfNeeded = (newValue, newName) => {
-                        if($(`#quest_enemy_list option[value="${newValue}"]`).length === 0) {
-                            $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`)
-                        }
-                    }
-
-                    const jumpQuestMob = (jumpOffset) => {
-                        const selectedQuestMob = $('#quest_enemy_list').children('option:selected');
-                        const oldValue = parseInt(selectedQuestMob.attr('value'));
-
-                        if(oldValue > 626) {
-                            const oldName = selectedQuestMob.attr('name');
-                            const newValue = oldValue + (11 * jumpOffset);
-                            const newName = oldName.split('#')[0] +'#' + (newValue - 626);
-                            addQuestMobIfNeeded(newValue, newName);
-                            $('#quest_enemy_list').val(newValue);
-                        }
-
-                    }
 
                     if($(jumpPreviousQuestMobButtonSelector).length === 0) {
                         $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;" data-toggle="tooltip" title="Press and hold to cycle throught mobs in rapid succession">`);
@@ -2721,14 +2730,46 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                         $(jumpPreviousQuestMobButtonSelector).tooltip({placement: 'auto left', container: 'body', html: true})
 
                         $(document).on('click', jumpPreviousQuestMobButtonSelector, () => {
-                            jumpQuestMob(-1);
+                            fn.helpers.jumpQuestMob(-1);
                         });
 
                         let jumpInterval = null;
-                        $(document).on('mousedown', jumpPreviousQuestMobButtonSelector, _.debounce(() => {
-                            jumpInterval = setInterval(() => jumpQuestMob(-1), 50)
-                        }, 500));
-                        $(document).on('mouseup mouseleave', jumpPreviousQuestMobButtonSelector, (e) => clearInterval(jumpInterval))
+                        let shouldStop = false;
+                        $(document).on('contextmenu', jumpPreviousQuestMobButtonSelector, (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                        })
+                        $(document).on('mousedown', jumpPreviousQuestMobButtonSelector, () => {
+                            shouldStop = false;
+                            return _.debounce(() => {
+                                if (true === shouldStop) {
+                                    return;
+                                }
+                                jumpInterval = setInterval(() => fn.helpers.jumpQuestMob(-1), VARIABLES.settings.jump_mobs_speed)
+                            }, 500)();
+                        });
+
+                        $(document).on('mouseup mouseleave', jumpPreviousQuestMobButtonSelector, () => {
+                            shouldStop = true;
+                            clearInterval(jumpInterval);
+                        });
+                    }
+
+                    if($(jumpQuestMobIntervalSelector).length === 0) {
+                        $('.questRequest[data-questtype="kill"]').after(`<div class="mt10"><div class="col-xs-6"><input type="number" value="${VARIABLES.settings.jump_mobs_increment}" id="${jumpQuestMobIntervalId}" class="col-xs-12 small" style="margin-top: 7px; padding: 2px 6px;" min="11" step="11" data-toggle="tooltip" title="Fucus and use up/down arrow keys to not have to do math"><label for="${jumpQuestMobIntervalId}"">Jump by this many mobs</label></div><div class="col-xs-6"><input type="number" value="${VARIABLES.settings.jump_mobs_speed}" id="${jumpQuestMobSpeedId}" class="col-xs-12 small" style="margin-top: 7px; padding: 2px 6px;" min="50" data-toggle="tooltip" title="Jump every (50 = 0.05s, 100 = 0.1s, 2000 = 2s, etc.) miliseconds (1000ms = 1s)"><label for="${jumpQuestMobSpeedId}"">How fast to jump (in ms)</label></div></div>`);
+
+                        $(jumpQuestMobIntervalSelector).tooltip({placement: 'bottom auto', container: 'body', html: true})
+
+                        $(document).on('change', jumpQuestMobIntervalSelector, (e) => {
+                            fn.API.changeSetting('jump_mobs_increment', e.currentTarget)
+                        });
+
+                        $(jumpQuestMobSpeedSelector).tooltip({placement: 'bottom auto', container: 'body', html: true})
+
+                        $(document).on('change', jumpQuestMobSpeedSelector, (e) => {
+                            fn.API.changeSetting('jump_mobs_speed', e.currentTarget)
+                        });
                     }
 
                     if($(jumpNextQuestMobButtonSelector).length === 0) {
@@ -2737,14 +2778,25 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                         $(jumpNextQuestMobButtonSelector).tooltip({placement: 'auto right', container: 'body', html: true})
 
                         $(document).on('click', jumpNextQuestMobButtonSelector, () => {
-                            jumpQuestMob(1);
+                            fn.helpers.jumpQuestMob(1);
                         });
 
                         let jumpInterval = null;
-                        $(document).on('mousedown', jumpNextQuestMobButtonSelector, _.debounce(() => {
-                            jumpInterval = setInterval(() => jumpQuestMob(1), 50)
-                        }, 500));
-                        $(document).on('mouseup mouseleave', jumpNextQuestMobButtonSelector, (e) => clearInterval(jumpInterval))
+                        let shouldStop = false;
+                        $(document).on('contextmenu', jumpNextQuestMobButtonSelector, (e) => {e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();})
+                        $(document).on('mousedown', jumpNextQuestMobButtonSelector, () => {
+                            shouldStop = false;
+                            return _.debounce(() => {
+                                if (true === shouldStop) {
+                                    return;
+                                }
+                                jumpInterval = setInterval(() => fn.helpers.jumpQuestMob(1), VARIABLES.settings.jump_mobs_speed);
+                            }, 500)();
+                        });
+                        $(document).on('mouseup mouseleave', jumpNextQuestMobButtonSelector, () => {
+                            shouldStop = true;
+                            clearInterval(jumpInterval);
+                        });
                     }
                 }
             },
@@ -2847,7 +2899,6 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
 
     $(document).on('click', '#RQ-hub-stats', function () {
         QoL.hubShowSection('stats-info');
-
     });
 
     $(document).on('click', '#RQ-hub-settings', function () {
@@ -2895,7 +2946,7 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
     $(document).on('click', '.roa-ls-remove', function () {
         let lsKey = this.getAttribute('data-ls-key');
         $.confirm({
-            title  : 'localStorage item deletetion',
+            title  : 'localStorage item deletion',
             message: `Are you sure you want to remove ${lsKey} localStorage entry?<br>If this entry is from an userscript, you may need to refresh before it's reentered by said script.`,
             buttons: {
                 Remove: {
