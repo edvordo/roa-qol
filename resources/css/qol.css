@@ -183,3 +183,13 @@ table#allThemTables > tbody > tr > td > table {
     float: none!important;
     border-left: none;
 }
+
+label[for="roaMobInterval"], label[for="roaMobSpeed"] {
+    position: absolute;
+    top: -5px;
+    left: 17px;
+    background: var(--ui-background-color);
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 11px;
+}
