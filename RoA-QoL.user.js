@@ -1080,6 +1080,8 @@
                     document.querySelector('#professionQuest').insertAdjacentElement('beforeend', div.cloneNode());
 
                     document.querySelector('#massButtonHolder').insertAdjacentHTML('beforeend', '<a id="RQ-export-ingredients-for-bento" class="small hidden">[Export]</a>');
+
+                    document.querySelector('#activityWrapper > div').insertAdjacentHTML('beforeend', '<a id="RQ-open-to-drop-tracker" class="small col-xs-12">[QoL Drop Tracker]</a>');
                 },
                 setupTemplates() {
                     let chartsContentTmpl = '';
@@ -2352,6 +2354,11 @@
                     $('#RQ-hub-wrapper').hide();
                     fn.helpers.hubToggleTo();
                 },
+                externalOpenTo(main, sub = null, force = true) {
+                    $('#modalTitle').text('RoA-QoL - HUB');
+                    $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
+                    fn.API.hubShowSection(main, sub, force)
+                },
                 hubShowSection(main, sub = null, force = true) {
                     if (false === force && 0 !== VARIABLES.hub.tab.length) {
                         main = VARIABLES.hub.tab;
@@ -2853,6 +2860,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
 
     $(document).on('click', '#RQ-hub-drop-tracker', function () {
         QoL.hubShowSection('drop-tracker');
+    });
+
+    $(document).on('click', '#RQ-open-to-drop-tracker', function () {
+        QoL.externalOpenTo('drop-tracker');
     });
 
     $(document).on('click', '#clearBattleStats', function () {
