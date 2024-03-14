@@ -7,7 +7,7 @@
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
-// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/css/qol.css
+// @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@50d84456/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
