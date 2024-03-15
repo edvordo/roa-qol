@@ -102,7 +102,7 @@ if (typeof Number.prototype.toTimeRemaining !== 'function') {
         let seconds = Math.floor(value) % 60;
         let minutes = Math.floor(value / 60) % 60;
         let hours = Math.floor(value / 60 / 60) % 24;
-        let days = Math.floor(value / 60 / 60);
+        let days = Math.floor(value / 60 / 60 / 24);
 
         let result = [];
         if (days > 0) result.push(`${days}d`);
