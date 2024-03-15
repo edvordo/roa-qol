@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.6
+// @version      2.8.7
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -11,7 +11,7 @@
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
-// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/common.js
+// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.7/common.js
 // @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
 // @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
 // @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
@@ -2342,19 +2342,23 @@
                     if (false === data.results.hasOwnProperty('p')) {
                         return;
                     }
-                    const { next_action, autos_max, autos_remaining } = data.results.p
 
-                    if (!$('#autosRemaining').attr('data-toggle')) {
-                        $('#autosRemaining').attr('data-toggle', 'tooltip').tooltip({placement: 'bottom center', container: 'body', html: true})
+                    const { next_action, autos_max, autos_remaining } = data.results.p;
+
+                    const autosRemainingElement = $('#autosRemaining');
+                    const autosMaximumElement = $('#autosMaximum');
+
+                    if (!autosRemainingElement.attr('data-toggle')) {
+                        autosRemainingElement.attr('data-toggle', 'tooltip').tooltip({placement: 'bottom center', container: 'body', html: true});
                     }
-                    if (!$('#autosMaximum').attr('data-toggle')) {
-                        $('#autosMaximum').attr('data-toggle', 'tooltip').tooltip({placement: 'bottom center', container: 'body', html: true})
+                    if (!autosMaximumElement.attr('data-toggle')) {
+                        autosMaximumElement.attr('data-toggle', 'tooltip').tooltip({placement: 'bottom center', container: 'body', html: true});
                     }
 
-                    let tmpl = '<h5>Based upon</h5>{next_action}s action timer <h5>Good for</h5>{estimate}';
+                    const tmpl = '<h5>Based upon</h5>{next_action}s action timer <h5>Good for</h5>{estimate}';
 
-                    $('#autosRemaining').attr({'data-original-title': tmpl.formatQoL({next_action: (next_action / 1000).toFixed(3), estimate: (autos_remaining * next_action).toTimeRemaining()})})
-                    $('#autosMaximum').attr({'data-original-title': tmpl.formatQoL({next_action: (next_action / 1000).toFixed(3), estimate: (autos_max * next_action).toTimeRemaining()})})
+                    autosRemainingElement.attr({'data-original-title': tmpl.formatQoL({next_action: (next_action / 1000).toFixed(3), estimate: (autos_remaining * next_action).toTimeRemaining()})});
+                    autosMaximumElement.attr({'data-original-title': tmpl.formatQoL({next_action: (next_action / 1000).toFixed(3), estimate: (autos_max * next_action).toTimeRemaining()})});
                 },
                 processEventUpdate(message) {
                     fn.helpers.togglePerHourSection('event-update');
