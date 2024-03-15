@@ -101,9 +101,11 @@ if (typeof Number.prototype.toTimeRemaining !== 'function') {
 
         let seconds = Math.floor(value) % 60;
         let minutes = Math.floor(value / 60) % 60;
-        let hours = Math.floor(value / 60 / 60) % 60;
+        let hours = Math.floor(value / 60 / 60) % 24;
+        let days = Math.floor(value / 60 / 60);
 
         let result = [];
+        if (days > 0) result.push(`${days}d`);
         if (hours > 0) result.push(`${hours}h`);
         if (minutes > 0) result.push(`${minutes < 10 ? '0' : ''}${minutes}m`);
         result.push(`${seconds < 10 ? '0' : ''}${seconds}s`);
