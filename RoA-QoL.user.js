@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.7
+// @version      2.8.8
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -11,6 +11,7 @@
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
+// @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
 // @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.7/common.js
 // @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
 // @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
@@ -25,6 +26,7 @@
 // @grant        GM_info
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
+// @grant        GM_getResourceURL
 // ==/UserScript==
 (function (window, $) {
 
@@ -1101,6 +1103,8 @@
                     document.querySelector('#massButtonHolder').insertAdjacentHTML('beforeend', '<a id="RQ-export-ingredients-for-bento" class="small hidden">[Export]</a>');
 
                     document.querySelector('#activityWrapper > div').insertAdjacentHTML('beforeend', '<a id="RQ-open-to-drop-tracker" class="small col-xs-12">[QoL Drop Tracker]</a>');
+
+                    document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="icon" href="${GM_getResourceURL('favicon.ico')}" type="image/x-icon" />`);
                 },
                 setupTemplates() {
                     let chartsContentTmpl = '';
