@@ -118,6 +118,7 @@
             timer_estimates            : false,
             jump_mobs_increment        : 11,
             jump_mobs_speed            : 50,
+            gains_period_days          : false,
             tracker                    : {
                 fame          : true,
                 crystals      : true,
@@ -610,7 +611,7 @@
                 updateStats(type, data) {
                     let now           = moment.tz(GAME_TIME_ZONE);
                     let hour          = 60 * 60 * 1000;
-                    let tmpl          = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h';
+                    let tmpl          = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / {period}</h5>{wannabe} / {period}';
                     let map           = {};
                     let count         = 0;
                     let trackingStart = new Date();
@@ -651,14 +652,15 @@
                         }
                         let ed = map[e].d !== '' ? map[e].d : e;
 
-                        //<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h
+                        //<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / {period}</h5>{wannabe} / {period}
                         let obj = {
                             total  : VARIABLES.QoLStats.d[ed].format(),
                             label  : map[e].l,
                             count  : count.format(),
                             since  : trackingStart.format('Do MMM Y HH:mm:ss'),
                             type   : `${type} actions`,
-                            wannabe: (Math.floor(hour / VARIABLES.QoLStats.na * map[e].c)).format(),
+                            period   : true === VARIABLES.settings.gains_period_days ? 'd' : 'h',
+                            wannabe: (Math.floor((hour * (true === VARIABLES.settings.gains_period_days ? 1 : 24)) / VARIABLES.QoLStats.na * map[e].c)).format(),
                         };
 
                         VARIABLES.QoLStats.e[e]
