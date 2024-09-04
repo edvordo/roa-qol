@@ -9,7 +9,7 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.5/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
 // @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.7/common.js
@@ -118,6 +118,7 @@
             timer_estimates            : false,
             jump_mobs_increment        : 11,
             jump_mobs_speed            : 50,
+            gains_period_days          : false,
             tracker                    : {
                 fame          : true,
                 crystals      : true,
@@ -610,7 +611,8 @@
                 updateStats(type, data) {
                     let now           = moment.tz(GAME_TIME_ZONE);
                     let hour          = 60 * 60 * 1000;
-                    let tmpl          = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h';
+                    let period        = hour * (true === VARIABLES.settings.gains_period_days ? 24 : 1);
+                    let tmpl          = '<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / {period}</h5>{wannabe} / {period}';
                     let map           = {};
                     let count         = 0;
                     let trackingStart = new Date();
@@ -651,18 +653,19 @@
                         }
                         let ed = map[e].d !== '' ? map[e].d : e;
 
-                        //<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / h</h5>{wannabe} / h
+                        //<h5>Based upon</h5>{total} {label} over {count} {type} since {since}<h5>Would be gain / {period}</h5>{wannabe} / {period}
                         let obj = {
                             total  : VARIABLES.QoLStats.d[ed].format(),
                             label  : map[e].l,
                             count  : count.format(),
                             since  : trackingStart.format('Do MMM Y HH:mm:ss'),
                             type   : `${type} actions`,
-                            wannabe: (Math.floor(hour / VARIABLES.QoLStats.na * map[e].c)).format(),
+                            period   : true === VARIABLES.settings.gains_period_days ? 'd' : 'h',
+                            wannabe: (Math.floor((period) / VARIABLES.QoLStats.na * map[e].c)).format(),
                         };
 
                         VARIABLES.QoLStats.e[e]
-                            .text((VARIABLES.QoLStats.d[ed] / (now - trackingStart) * hour).format())
+                            .text((VARIABLES.QoLStats.d[ed] / (now - trackingStart) * period).format())
                             .attr({'data-original-title': tmpl.formatQoL(obj)});
 
                     }
@@ -723,6 +726,12 @@
                         contentWrapper.insertAdjacentElement('afterend', chatWrapper);
                         navWrapper.insertAdjacentElement('afterend', contentWrapper);
                     }
+                },
+                swapLabelsForGains() {
+                    const period = true === VARIABLES.settings.gains_period_days ? '/ d:' : '/ h:';
+                    $('.rq-h > td.left')
+                      .filter((i,e) => /\/ [hd]:$/.test(e.textContent.trim()))
+                      .each((i, e) => e.textContent = e.textContent.replace(/\/ ([hd]):$/,  period));
                 },
                 colorGemOption(option) {
                     if (option.tagName !== 'OPTION') {
@@ -1544,6 +1553,7 @@
                     }
 
                     fn.helpers.chatContentSwap();
+                    fn.helpers.swapLabelsForGains();
 
                     document.querySelectorAll('.RQ-user-color-option').forEach(el => {
                         if (VARIABLES.settings.user_color_messages) {
