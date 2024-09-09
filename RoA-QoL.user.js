@@ -1567,7 +1567,7 @@
                         OBSERVERS.toggleable.eventAbbreviator.restart();
                     }
 
-                    // event abbreviator
+                    // effects timers
                     OBSERVERS.toggleable.effectsObserver.disconnect();
                     if (VARIABLES.settings.effects_timers) {
                         OBSERVERS.toggleable.effectsObserver.restart();
