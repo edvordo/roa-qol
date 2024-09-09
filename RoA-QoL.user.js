@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.8.9
+// @version      2.9.0
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -9,10 +9,10 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.9/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.0/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
-// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.7/common.js
+// @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.0/common.js
 // @require      https://cdn.jsdelivr.net/gh/ejci/favico.js@0.3.10/favico.js
 // @require      https://cdn.jsdelivr.net/gh/omichelsen/compare-versions@3.1.0/index.js
 // @require      https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.4/dist/lodash.min.js
@@ -119,6 +119,7 @@
             jump_mobs_increment        : 11,
             jump_mobs_speed            : 50,
             gains_period_days          : false,
+            effects_timers             : true,
             tracker                    : {
                 fame          : true,
                 crystals      : true,
@@ -454,6 +455,31 @@
                     });
                     o.observe(document.querySelector('#chatMessageList'), {childList: true});
                     o.observe(document.querySelector('#chatMessageHistory'), {childList: true});
+                    return o;
+                },
+                effectsObserver() {
+                    let o = new MutationObserver(mutationList => {
+                        mutationList.forEach(mutation => {
+                            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                                for (let node of mutation.addedNodes) {
+                                    const effectTimeInfoElement = node.querySelector('.col-xs-6.col-md-12.col-lg-7');
+
+                                    let regExp = /([0-9]+[hms])/g;
+                                    if (true === regExp.test(effectTimeInfoElement.textContent)) {
+                                        const matches = effectTimeInfoElement.textContent.match(regExp);
+                                        let hours = parseInt(matches.find(i => i[i.length - 1] === 'h') || 0) * 60 * 60;
+                                        let minutes = parseInt(matches.find(i => i[i.length - 1] === 'm') || 0) * 60;
+                                        let seconds = parseInt(matches.find(i => i[i.length - 1] === 's') || 0);
+
+                                        effectTimeInfoElement.textContent = ((hours + minutes + seconds) * 1000).toTimeEstimate();
+                                    }
+                                }
+                            }
+                        });
+                    });
+
+                    o.observe(document.querySelector('#effectTable'), { childList: true });
+
                     return o;
                 },
                 houseQuickBuildTimestamps: new MutationObserver(mutationList => {
@@ -1066,6 +1092,7 @@
                     OBSERVERS.toggleable.agility              = fn.helpers.initObserver('agility', 'data-base', 'td#agility');
                     OBSERVERS.toggleable.eventAbbreviator     = OBSERVERS.toggleable.eventAbbreviator();
                     OBSERVERS.toggleable.chatMessagesObserver = OBSERVERS.toggleable.chatMessagesObserver();
+                    OBSERVERS.toggleable.effectsObserver      = OBSERVERS.toggleable.effectsObserver();
 
                     OBSERVERS.toggleable.houseQuickBuildTimestamps.observe(document.querySelector('#houseQuickBuildList'), {childList: true});
                     OBSERVERS.toggleable.houseItemBuildTimestamps.observe(document.querySelector('#houseRoomItemLevelUpgradeTimeCost'), {childList: true, characterData: true});
@@ -1538,6 +1565,12 @@
                     OBSERVERS.toggleable.eventAbbreviator.disconnect();
                     if (VARIABLES.settings.event_abbreviation) {
                         OBSERVERS.toggleable.eventAbbreviator.restart();
+                    }
+
+                    // event abbreviator
+                    OBSERVERS.toggleable.effectsObserver.disconnect();
+                    if (VARIABLES.settings.effects_timers) {
+                        OBSERVERS.toggleable.effectsObserver.restart();
                     }
 
                     // chat limiter
