@@ -59,9 +59,13 @@ if (typeof Number.prototype.toTimeEstimate !== 'function') {
         let _hour = _minute * 60;
         let _day = _hour * 24;
         let _month = _day * 30;
+        let _year = _month * 12;
 
         let estimate = '~';
         let num = this.valueOf();
+
+        let years = Math.floor(num / _year);
+        num = num % _year;
 
         let months = Math.floor(num / _month);
         num = num % _month;
@@ -74,7 +78,12 @@ if (typeof Number.prototype.toTimeEstimate !== 'function') {
 
         let minutes = Math.floor(num / _minute);
 
-        if (months > 0) {
+        if (years > 0) {
+            estimate = `~${years}y, ${days}d`;
+            if (months > 0) {
+                estimate = `~${years}y, ${months}mon`;
+            }
+        } else if (months > 0) {
             estimate += `${months}mon, ${days}d`;
         } else if (days > 0) {
             estimate += `${days}d, ${hours}h`;
