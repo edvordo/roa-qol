@@ -1100,7 +1100,7 @@
 
                 loadMarketLatestData() {
                     log('loading market data');
-                    fetch('https://roa.edvordo.sk/market-tracker-data')
+                    fetch('https://roa.edvor.do/api/latest-market-tracker-data')
                         .then(res => res.json())
                         .then(data => {
                             data                 = JSON.parse(JSON.stringify(data));
