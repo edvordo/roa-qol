@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.1
+// @version      2.9.2
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -9,7 +9,7 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.0/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.2/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
 // @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.0/common.js
@@ -119,6 +119,7 @@
             jump_mobs_increment        : 11,
             jump_mobs_speed            : 50,
             gains_period_days          : false,
+            remember_chat_height       : true,
             effects_timers             : true,
             tracker                    : {
                 fame          : true,
@@ -379,7 +380,7 @@
                                     m.addedNodes[0].innerHTML = '';
 
                                     m.addedNodes[0].appendChild(document.createTextNode('\u2194 '));
-                                    let originalDamage = spans[1].textContent
+                                    let originalDamage = spans[1].textContent;
                                     spans[1].textContent = parseFloat(spans[1].textContent.replace(/,/g, '')).abbr();
                                     spans[1].setAttribute('title', originalDamage);
                                     m.addedNodes[0].appendChild(spans[1]);
@@ -455,6 +456,18 @@
                     });
                     o.observe(document.querySelector('#chatMessageList'), {childList: true});
                     o.observe(document.querySelector('#chatMessageHistory'), {childList: true});
+                    return o;
+                },
+                chatMessageListWrapperHeightObserver() {
+                    const o = new MutationObserver((mutationList) => {
+                          mutationList.forEach(mutation => {
+                              if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                                  localStorage.setItem('chatMessageListWrapperHeight', mutation.target.style.height);
+                              }
+                          });
+                    });
+
+                    o.observe(document.querySelector('#chatMessageListWrapper'), { attributeFilter: ['style'] });
                     return o;
                 },
                 effectsObserver() {
@@ -891,7 +904,7 @@
                 },
                 addQuestMobIfNeeded(newValue, newName) {
                     if($(`#quest_enemy_list option[value="${newValue}"]`).length === 0) {
-                        $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`)
+                        $('#quest_enemy_list').append(`<option value="${newValue}" name="${newName}">${newName}</option>`);
                     }
                 },
             },
@@ -1092,6 +1105,7 @@
                     OBSERVERS.toggleable.agility              = fn.helpers.initObserver('agility', 'data-base', 'td#agility');
                     OBSERVERS.toggleable.eventAbbreviator     = OBSERVERS.toggleable.eventAbbreviator();
                     OBSERVERS.toggleable.chatMessagesObserver = OBSERVERS.toggleable.chatMessagesObserver();
+                    OBSERVERS.toggleable.chatMessageListWrapperHeightObserver = OBSERVERS.toggleable.chatMessageListWrapperHeightObserver();
                     OBSERVERS.toggleable.effectsObserver      = OBSERVERS.toggleable.effectsObserver();
 
                     OBSERVERS.toggleable.houseQuickBuildTimestamps.observe(document.querySelector('#houseQuickBuildList'), {childList: true});
@@ -1571,6 +1585,15 @@
                     OBSERVERS.toggleable.effectsObserver.disconnect();
                     if (VARIABLES.settings.effects_timers) {
                         OBSERVERS.toggleable.effectsObserver.restart();
+                    }
+
+                    OBSERVERS.toggleable.chatMessageListWrapperHeightObserver.disconnect();
+                    if (true === VARIABLES.settings.remember_chat_height) {
+                        OBSERVERS.toggleable.chatMessageListWrapperHeightObserver.restart();
+                        const chatMessageListWrapperHeight = localStorage.getItem('chatMessageListWrapperHeight');
+                        if (null !== chatMessageListWrapperHeight) {
+                            document.querySelector('#chatMessageListWrapper').style.height = chatMessageListWrapperHeight;
+                        }
                     }
 
                     // chat limiter
