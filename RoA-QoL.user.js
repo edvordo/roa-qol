@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.2
+// @version      2.9.3
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -9,7 +9,7 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.2/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.3/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
 // @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.0/common.js
@@ -121,6 +121,7 @@
             gains_period_days          : false,
             remember_chat_height       : true,
             effects_timers             : true,
+            abbreviate_stats_in_header : true,
             tracker                    : {
                 fame          : true,
                 crystals      : true,
@@ -704,7 +705,7 @@
                         };
 
                         VARIABLES.QoLStats.e[e]
-                            .text((VARIABLES.QoLStats.d[ed] / (now - trackingStart) * period).format())
+                            .text((VARIABLES.QoLStats.d[ed] / (now - trackingStart) * period)[VARIABLES.settings.abbreviate_stats_in_header ? 'abbr' : 'format']())
                             .attr({'data-original-title': tmpl.formatQoL(obj)});
 
                     }
