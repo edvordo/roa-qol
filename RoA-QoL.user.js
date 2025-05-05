@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.3
+// @version      2.9.4
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
-// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/templates/header.html
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.4/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.3/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
@@ -2353,6 +2353,9 @@
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
+
+                        eta = (data.a.ar - data.a.ac) / data.a.ad * data.p.next_action;
+                        VARIABLES.QoLStats.e.CraftItemETA.text(eta.toTimeEstimate());
 
                         VARIABLES.QoLStats.na = data.p.next_action;
 
