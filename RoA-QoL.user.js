@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.4
+// @version      2.9.5
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
-// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.4/resources/templates/header.html
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.5/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.3/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
@@ -569,6 +569,12 @@
                 ),
                 splicingMenuGemsPicker: new MutationObserver(_.debounce(function () {
                     document.querySelectorAll('#carve_splice_secondary option').forEach(fn.helpers.colorGemOption);
+                }, 100)),
+                craftingTableQueue: new MutationObserver(_.debounce(() => {
+                    VARIABLES.QoLStats.d.CraftQueueETA = [...document.querySelectorAll('#craft_sortable .itemWithTooltip')]
+                      .map(item => JSON.parse(item.dataset.json))
+                      .map(item => ({ mc: item.mc, mr: item.mr }))
+                      .reduce((carry, { mc, mr }) => carry += (mr - mc), 0);
                 }, 100))
             },
         };
@@ -708,6 +714,19 @@
                             .text((VARIABLES.QoLStats.d[ed] / (now - trackingStart) * period)[VARIABLES.settings.abbreviate_stats_in_header ? 'abbr' : 'format']())
                             .attr({'data-original-title': tmpl.formatQoL(obj)});
 
+                    }
+
+                    let obj = {
+                        total  : VARIABLES.QoLStats.d.CraftQueueETA.format(),
+                        label  : '',
+                        mats: data.ad.format(),
+                        time: (VARIABLES.QoLStats.na / 1000).format(3),
+                        disclaimer: VARIABLES.QoLStats.d.CraftQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open crafting table page in house`: ''
+                    };
+
+                    if (type === 'Crafting') {
+                        VARIABLES.QoLStats.e.CraftQueueETA
+                          .attr({ 'data-original-title': `<h5>Based upon</h5>{total} crafting materials required to complete all items in queue at {mats} mats used every action and {time}s action timer{disclaimer}`.formatQoL(obj) });
                     }
                 },
                 toggleSetting(key, set = false) {
@@ -1080,7 +1099,6 @@
                         from   : AVGDMGSTR_TBL_NAME,
                         groupBy: 't',
                     }).then(res => {
-                        // console.log(JSON.stringify(res, null, '\t'));
                         let item = res.shift();
                         if (item) {
                             VARIABLES.jsstore.avg_dmg.latest         = {};
@@ -2216,6 +2234,13 @@
                     fn.__.registerFameOwnGemTableObserver();
                 },
 
+                addCraftingTableQueueObserver() {
+                    OBSERVERS.general.craftingTableQueue.observe(
+                      document.querySelector('#houseRoomItemDescription'),
+                      { subtree: true, childList: true, attributes: true }
+                    );
+                },
+
                 handleHouseData(type, data) {
                     if (!VARIABLES.settings.house_tooltips) {
                         return;
@@ -2356,6 +2381,9 @@
 
                         eta = (data.a.ar - data.a.ac) / data.a.ad * data.p.next_action;
                         VARIABLES.QoLStats.e.CraftItemETA.text(eta.toTimeEstimate());
+
+                        eta = VARIABLES.QoLStats.d.CraftQueueETA / data.a.ad * data.p.next_action;
+                        VARIABLES.QoLStats.e.CraftQueueETA.text(eta.toTimeEstimate());
 
                         VARIABLES.QoLStats.na = data.p.next_action;
 
@@ -2805,7 +2833,7 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                     if($(jumpPreviousQuestMobButtonSelector).length === 0) {
                         $('.questRequest[data-questtype="kill"]').before(`<input type="button" id="${jumpPreviousQuestMobButtonId}" value="Jump Back" style="margin-right: 5px; padding: 6.5px;" data-toggle="tooltip" title="Press and hold to cycle throught mobs in rapid succession">`);
 
-                        $(jumpPreviousQuestMobButtonSelector).tooltip({placement: 'auto left', container: 'body', html: true})
+                        $(jumpPreviousQuestMobButtonSelector).tooltip({placement: 'auto left', container: 'body', html: true});
 
                         $(document).on('click', jumpPreviousQuestMobButtonSelector, () => {
                             fn.helpers.jumpQuestMob(-1);
@@ -2817,7 +2845,7 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                             e.preventDefault();
                             e.stopPropagation();
                             e.stopImmediatePropagation();
-                        })
+                        });
                         $(document).on('mousedown', jumpPreviousQuestMobButtonSelector, () => {
                             shouldStop = false;
                             return _.debounce(() => {
@@ -2837,23 +2865,23 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                     if($(jumpQuestMobIntervalSelector).length === 0) {
                         $('.questRequest[data-questtype="kill"]').after(`<div class="mt10"><div class="col-xs-6"><input type="number" value="${VARIABLES.settings.jump_mobs_increment}" id="${jumpQuestMobIntervalId}" class="col-xs-12 small" style="margin-top: 7px; padding: 2px 6px;" min="11" step="11" data-toggle="tooltip" title="Fucus and use up/down arrow keys to not have to do math"><label for="${jumpQuestMobIntervalId}"">Jump by this many mobs</label></div><div class="col-xs-6"><input type="number" value="${VARIABLES.settings.jump_mobs_speed}" id="${jumpQuestMobSpeedId}" class="col-xs-12 small" style="margin-top: 7px; padding: 2px 6px;" min="50" data-toggle="tooltip" title="Jump every (50 = 0.05s, 100 = 0.1s, 2000 = 2s, etc.) miliseconds (1000ms = 1s)"><label for="${jumpQuestMobSpeedId}"">How fast to jump (in ms)</label></div></div>`);
 
-                        $(jumpQuestMobIntervalSelector).tooltip({placement: 'bottom auto', container: 'body', html: true})
+                        $(jumpQuestMobIntervalSelector).tooltip({placement: 'bottom auto', container: 'body', html: true});
 
                         $(document).on('change', jumpQuestMobIntervalSelector, (e) => {
-                            fn.API.changeSetting('jump_mobs_increment', e.currentTarget)
+                            fn.API.changeSetting('jump_mobs_increment', e.currentTarget);
                         });
 
-                        $(jumpQuestMobSpeedSelector).tooltip({placement: 'bottom auto', container: 'body', html: true})
+                        $(jumpQuestMobSpeedSelector).tooltip({placement: 'bottom auto', container: 'body', html: true});
 
                         $(document).on('change', jumpQuestMobSpeedSelector, (e) => {
-                            fn.API.changeSetting('jump_mobs_speed', e.currentTarget)
+                            fn.API.changeSetting('jump_mobs_speed', e.currentTarget);
                         });
                     }
 
                     if($(jumpNextQuestMobButtonSelector).length === 0) {
                         $('.questRequest[data-questtype="kill"]').after(`<input type="button" id="${jumpNextQuestMobButtonId}" value="Jump Forward" style="margin-left: 5px; padding: 6.5px;" data-toggle="tooltip" title="Press and hold to cycle throught mobs in rapid succession">`);
 
-                        $(jumpNextQuestMobButtonSelector).tooltip({placement: 'auto right', container: 'body', html: true})
+                        $(jumpNextQuestMobButtonSelector).tooltip({placement: 'auto right', container: 'body', html: true});
 
                         $(document).on('click', jumpNextQuestMobButtonSelector, () => {
                             fn.helpers.jumpQuestMob(1);
@@ -2861,7 +2889,7 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
 
                         let jumpInterval = null;
                         let shouldStop = false;
-                        $(document).on('contextmenu', jumpNextQuestMobButtonSelector, (e) => {e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();})
+                        $(document).on('contextmenu', jumpNextQuestMobButtonSelector, (e) => {e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();});
                         $(document).on('mousedown', jumpNextQuestMobButtonSelector, () => {
                             shouldStop = false;
                             return _.debounce(() => {
@@ -3058,6 +3086,9 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
         if (data.item.room_type === 22 && data.item.item_type === 101) {
             QoL.improveGemSplicingMenu();
         }
+        if (data.item.room_type === 22 && data.item.item_type === 100) {
+            QoL.addCraftingTableQueueObserver();
+        }
     });
 
     $(document).on('click', '#RQ-user-color-set', function () {
@@ -3110,11 +3141,17 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
     });
 
     $(document).on('click', '#allHouseUpgrades', function() {
-        QoL.registerHouseCompleteRoomListObserver()
+        QoL.registerHouseCompleteRoomListObserver();
     });
 
     $(document).on('roa-ws:page:quests', function() {
         QoL.addMobJumpButtons();
+    });
+
+    $(document).on('click', '#inventoryEquipmentTable .scrapLink', function(e) {
+        if (e.originalEvent.altKey) {
+            setTimeout(() => document.querySelector('#confirmButtons .green').click(), 200);
+        }
     });
 
 })(window, jQuery);
