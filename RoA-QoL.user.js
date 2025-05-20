@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.5
+// @version      2.9.6
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -716,15 +716,15 @@
 
                     }
 
-                    let obj = {
-                        total  : VARIABLES.QoLStats.d.CraftQueueETA.format(),
-                        label  : '',
-                        mats: data.ad.format(),
-                        time: (VARIABLES.QoLStats.na / 1000).format(3),
-                        disclaimer: VARIABLES.QoLStats.d.CraftQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open crafting table page in house`: ''
-                    };
-
                     if (type === 'Crafting') {
+                        let obj = {
+                            total  : VARIABLES.QoLStats.d.CraftQueueETA.format(),
+                            label  : '',
+                            mats: data.ad.format(),
+                            time: (VARIABLES.QoLStats.na / 1000).format(3),
+                            disclaimer: VARIABLES.QoLStats.d.CraftQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open crafting table page in house`: ''
+                        };
+
                         VARIABLES.QoLStats.e.CraftQueueETA
                           .attr({ 'data-original-title': `<h5>Based upon</h5>{total} crafting materials required to complete all items in queue at {mats} mats used every action and {time}s action timer{disclaimer}`.formatQoL(obj) });
                     }
