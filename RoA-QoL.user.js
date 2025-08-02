@@ -100,6 +100,7 @@
             char_count                 : true,
             command_helper             : false,
             fame_own_gems              : true,
+            mass_gem_send_all_by_row   : true,
             event_ratio_message        : true,
             event_ratio_chat_prepare   : true,
             set_max_quest_reward       : true,
@@ -2195,6 +2196,38 @@
                     return result;
                 },
 
+                addMassGemSendAllByRowButton(table) {
+                    const rows = table.querySelectorAll('tr');
+                    
+                    // skip the last row cuz that's the send button
+                    // also note that the Select All button at the top of the menu is not part of the table
+                    for (let i = 0; i < rows.length - 1; i++) {
+                        const row = rows[i];
+                        const cell = row.querySelector('td');
+                        
+                        if (cell) {
+                            // Add [All] button to the end of the cell content
+                            let a         = document.createElement('a');
+                            a.textContent = '[All]';
+
+                            // make the [All] button set the value of the input field to the number of gems
+                            a.setAttribute('data-max', cell.firstChild.getAttribute('data-max')); // using cell.firstChild is probably bad practice
+                            a.setAttribute('class', 'RoAQoL-massGemSendRowAll');
+                            a.addEventListener('click', function (e) {
+                                e.preventDefault();
+                                let max = parseInt(this.getAttribute('data-max'));
+                                // theoretically impossible, but just in case
+                                if (isNaN(max) || max < 0) {
+                                    max = 0;
+                                }
+                                cell.firstChild.setAttribute('value', max);
+                            });
+                            cell.appendChild(document.createTextNode(' '));
+                            cell.appendChild(a);
+                        }
+                    }
+                },
+
                 startup() {
                     return {
                         'Initiation IndexedDB ..': fn.__.setupIndexedDB,
@@ -2232,6 +2265,23 @@
                         VARIABLES.gems[gem.i] = gem;
                     }
                     fn.__.registerFameOwnGemTableObserver();
+                },
+
+                massGemSendHandler() {
+                    if (!VARIABLES.settings.mass_gem_send_all_by_row) {
+                        return;
+                    }
+
+                    // wait to make sure table is created, then add buttons
+                    const checkForTable = setInterval(() => {
+                        const table = document.getElementById('massGemSendTable');
+                        if (table) {
+                            clearInterval(checkForTable);
+                            fn.__.addMassGemSendAllByRowButton(table);
+                        }
+                    }, 100);
+                    
+                    setTimeout(() => clearInterval(checkForTable), 5000);
                 },
 
                 addCraftingTableQueueObserver() {
@@ -2979,6 +3029,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
         button.setAttribute('data-gid', e.target.getAttribute('data-gemid'));
         document.querySelector('#modal2Content').appendChild(button);
         button.click();
+    });
+
+    $(document).on('click', '#massGemSend', function (e) {
+        QoL.massGemSendHandler();
     });
 
     $(document).on('click', '#RoA-QoL-open-hub', function () {
