@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.6
+// @version      2.9.7
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -9,7 +9,7 @@
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
 // @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.5/resources/templates/header.html
-// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.3/resources/templates/settings.html
+// @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.7/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
 // @require      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.0/common.js
@@ -100,6 +100,7 @@
             char_count                 : true,
             command_helper             : false,
             fame_own_gems              : true,
+            mass_gem_send_all_by_row   : true,
             event_ratio_message        : true,
             event_ratio_chat_prepare   : true,
             set_max_quest_reward       : true,
@@ -2195,6 +2196,24 @@
                     return result;
                 },
 
+                addMassGemSendAllByRowButton(table) {
+                    const allButtonTemplate = document.createElement('a');
+                    allButtonTemplate.classList.add('RoAQoL-massGemSendRowAll');
+                    allButtonTemplate.textContent = '[All]';
+
+                    [...table.querySelectorAll('tr td')]
+                      .forEach(cell => {
+                          if (false === cell.innerHTML.includes('mass_gem_send_amount')) {
+                              return;
+                          }
+
+                          const allButton = allButtonTemplate.cloneNode(true);
+
+                          cell.insertAdjacentText('beforeend', ' ');
+                          cell.insertAdjacentElement('beforeend', allButton);
+                      });
+                },
+
                 startup() {
                     return {
                         'Initiation IndexedDB ..': fn.__.setupIndexedDB,
@@ -2232,6 +2251,23 @@
                         VARIABLES.gems[gem.i] = gem;
                     }
                     fn.__.registerFameOwnGemTableObserver();
+                },
+
+                massGemSendHandler() {
+                    if (!VARIABLES.settings.mass_gem_send_all_by_row) {
+                        return;
+                    }
+
+                    // wait to make sure table is created, then add buttons
+                    const checkForTable = setInterval(() => {
+                        const table = document.getElementById('massGemSendTable');
+                        if (table) {
+                            clearInterval(checkForTable);
+                            fn.__.addMassGemSendAllByRowButton(table);
+                        }
+                    }, 100);
+
+                    setTimeout(() => clearInterval(checkForTable), 5000);
                 },
 
                 addCraftingTableQueueObserver() {
@@ -2981,6 +3017,10 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
         button.click();
     });
 
+    $(document).on('click', '#massGemSend', function (e) {
+        QoL.massGemSendHandler();
+    });
+
     $(document).on('click', '#RoA-QoL-open-hub', function () {
         $('#modalTitle').text('RoA-QoL - HUB');
         $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
@@ -3151,6 +3191,20 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
     $(document).on('click', '#inventoryEquipmentTable .scrapLink', function(e) {
         if (e.originalEvent.altKey) {
             setTimeout(() => document.querySelector('#confirmButtons .green').click(), 200);
+        }
+    });
+
+    $(document).on('click', '.RoAQoL-massGemSendRowAll', function(e) {
+        const input = e.target.closest('td').querySelector('.mass_gem_send_amount');
+        // just in case
+        if (!input) {
+            return;
+        }
+
+        const max = parseInt(input.dataset.max);
+        // just in case
+        if (max) {
+            input.value = input.dataset.max;
         }
     });
 
