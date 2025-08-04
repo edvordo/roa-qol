@@ -2197,35 +2197,21 @@
                 },
 
                 addMassGemSendAllByRowButton(table) {
-                    const rows = table.querySelectorAll('tr');
-                    
-                    // skip the last row cuz that's the send button
-                    // also note that the Select All button at the top of the menu is not part of the table
-                    for (let i = 0; i < rows.length - 1; i++) {
-                        const row = rows[i];
-                        const cell = row.querySelector('td');
-                        
-                        if (cell) {
-                            // Add [All] button to the end of the cell content
-                            let a         = document.createElement('a');
-                            a.textContent = '[All]';
+                    const allButtonTemplate = document.createElement('a');
+                    allButtonTemplate.classList.add('RoAQoL-massGemSendRowAll');
+                    allButtonTemplate.textContent = '[All]';
 
-                            // make the [All] button set the value of the input field to the number of gems
-                            a.setAttribute('data-max', cell.firstChild.getAttribute('data-max')); // using cell.firstChild is probably bad practice
-                            a.setAttribute('class', 'RoAQoL-massGemSendRowAll');
-                            a.addEventListener('click', function (e) {
-                                e.preventDefault();
-                                let max = parseInt(this.getAttribute('data-max'));
-                                // theoretically impossible, but just in case
-                                if (isNaN(max) || max < 0) {
-                                    max = 0;
-                                }
-                                cell.firstChild.setAttribute('value', max);
-                            });
-                            cell.appendChild(document.createTextNode(' '));
-                            cell.appendChild(a);
-                        }
-                    }
+                    [...table.querySelectorAll('tr td')]
+                      .forEach(cell => {
+                          if (false === cell.innerHTML.includes('mass_gem_send_amount')) {
+                              return;
+                          }
+
+                          const allButton = allButtonTemplate.cloneNode(true);
+
+                          cell.insertAdjacentText('beforeend', ' ');
+                          cell.insertAdjacentElement('beforeend', allButton);
+                      });
                 },
 
                 startup() {
@@ -3205,6 +3191,20 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
     $(document).on('click', '#inventoryEquipmentTable .scrapLink', function(e) {
         if (e.originalEvent.altKey) {
             setTimeout(() => document.querySelector('#confirmButtons .green').click(), 200);
+        }
+    });
+
+    $(document).on('click', '.RoAQoL-massGemSendRowAll', function(e) {
+        const input = e.target.closest('td').querySelector('.mass_gem_send_amount');
+        // just in case
+        if (!input) {
+            return;
+        }
+
+        const max = parseInt(input.dataset.max);
+        // just in case
+        if (max) {
+            input.value = input.dataset.max;
         }
     });
 
