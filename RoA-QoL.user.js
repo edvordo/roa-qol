@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.7
+// @version      2.9.8
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -2623,12 +2623,9 @@
                     if (false === VARIABLES.settings.set_max_quest_reward) {
                         return false;
                     }
-                    let maxReward = parseInt(document.querySelector('.max_quest_crystals').textContent);
-                    if (isNaN(maxReward)) {
-                        return false;
-                    }
+
                     document.querySelectorAll('.quest_crystal_guess').forEach((e) => {
-                        e.value = maxReward;
+                        e.value = 25;
                     });
                 },
 
