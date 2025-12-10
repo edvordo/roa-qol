@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.8
+// @version      2.9.9
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
 // @match        https://*.avabur.com/game*
 // @match        http://*.avabur.com/game*
 // @resource     QoLCSS             https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.6/resources/css/qol.css
-// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.5/resources/templates/header.html
+// @resource     QoLHeaderHTML      https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.9/resources/templates/header.html
 // @resource     QoLSettingsHTML    https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.9.7/resources/templates/settings.html
 // @resource     SpectrumCSS        https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css
 // @resource     favicon.ico        https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.8/resources/img/favicon.ico
@@ -572,8 +572,15 @@
                     document.querySelectorAll('#carve_splice_secondary option').forEach(fn.helpers.colorGemOption);
                 }, 100)),
                 craftingTableQueue: new MutationObserver(_.debounce(() => {
-                    VARIABLES.QoLStats.d.CraftQueueETA = [...document.querySelectorAll('#craft_sortable .itemWithTooltip')]
+                    VARIABLES.QoLStats.d.CraftCarveQueueETA = [...document.querySelectorAll('#craft_sortable .itemWithTooltip')]
                       .map(item => JSON.parse(item.dataset.json))
+                      .map(item => ({ mc: item.mc, mr: item.mr }))
+                      .reduce((carry, { mc, mr }) => carry += (mr - mc), 0);
+                }, 100)),
+                carvingTableQueue: new MutationObserver(_.debounce(() => {
+                    VARIABLES.QoLStats.d.CraftCarveQueueETA = [...document.querySelectorAll('#carve_sortable .gemWithTooltip')]
+                      .map(item => JSON.parse(item.dataset.json))
+                      // {"i":11503003,"res":"","n":"Synthetic Zirconium of Training","c":"zirconium","o":"Reltorakii","l":70,"s":65535,"s2":null,"b":[""],"mr":914,"mc":849}
                       .map(item => ({ mc: item.mc, mr: item.mr }))
                       .reduce((carry, { mc, mr }) => carry += (mr - mc), 0);
                 }, 100))
@@ -719,15 +726,30 @@
 
                     if (type === 'Crafting') {
                         let obj = {
-                            total  : VARIABLES.QoLStats.d.CraftQueueETA.format(),
+                            total  : VARIABLES.QoLStats.d.CraftCarveQueueETA.format(),
                             label  : '',
                             mats: data.ad.format(),
                             time: (VARIABLES.QoLStats.na / 1000).format(3),
-                            disclaimer: VARIABLES.QoLStats.d.CraftQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open crafting table page in house`: ''
+                            disclaimer: VARIABLES.QoLStats.d.CraftCarveQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open crafting table page in house`: ''
                         };
 
-                        VARIABLES.QoLStats.e.CraftQueueETA
+                        VARIABLES.QoLStats.e.CraftCarveQueueETA
                           .attr({ 'data-original-title': `<h5>Based upon</h5>{total} crafting materials required to complete all items in queue at {mats} mats used every action and {time}s action timer{disclaimer}`.formatQoL(obj) });
+                    }
+
+                    if (type === 'Carving') {
+                        let obj = {
+                            total  : VARIABLES.QoLStats.d.CraftCarveQueueETA.format(),
+                            label  : '',
+                            frags: data.ad.format(),
+                            time: (VARIABLES.QoLStats.na / 1000).format(3),
+                            disclaimer: VARIABLES.QoLStats.d.CraftCarveQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open carving bench page in house`: ''
+                        };
+
+                        console.log({ obj, t: `<h5>Based upon</h5>{total} gem fragments required to complete all gems in queue at {frags} fragments used every action and {time}s action timer{disclaimer}`.formatQoL(obj) })
+
+                        VARIABLES.QoLStats.e.CraftCarveQueueETA
+                          .attr({ 'data-original-title': `<h5>Based upon</h5>{total} gem fragments required to complete all gems in queue at {frags} fragments used every action and {time}s action timer{disclaimer}`.formatQoL(obj) });
                     }
                 },
                 toggleSetting(key, set = false) {
@@ -2277,6 +2299,13 @@
                     );
                 },
 
+                addCarvingTableQueueObserver() {
+                    OBSERVERS.general.carvingTableQueue.observe(
+                      document.querySelector('#houseRoomItemDescription'),
+                      { subtree: true, childList: true, attributes: true }
+                    );
+                },
+
                 handleHouseData(type, data) {
                     if (!VARIABLES.settings.house_tooltips) {
                         return;
@@ -2418,8 +2447,8 @@
                         eta = (data.a.ar - data.a.ac) / data.a.ad * data.p.next_action;
                         VARIABLES.QoLStats.e.CraftItemETA.text(eta.toTimeEstimate());
 
-                        eta = VARIABLES.QoLStats.d.CraftQueueETA / data.a.ad * data.p.next_action;
-                        VARIABLES.QoLStats.e.CraftQueueETA.text(eta.toTimeEstimate());
+                        eta = VARIABLES.QoLStats.d.CraftCarveQueueETA / data.a.ad * data.p.next_action;
+                        VARIABLES.QoLStats.e.CraftCarveQueueETA.text(eta.toTimeEstimate());
 
                         VARIABLES.QoLStats.na = data.p.next_action;
 
@@ -2455,6 +2484,12 @@
                             eta = eta.toTimeEstimate();
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
+
+                        eta = (data.a.ar - data.a.ac) / data.a.ad * data.p.next_action;
+                        VARIABLES.QoLStats.e.CarveGemETA.text(eta.toTimeEstimate());
+
+                        eta = VARIABLES.QoLStats.d.CraftCarveQueueETA / data.a.ad * data.p.next_action;
+                        VARIABLES.QoLStats.e.CraftCarveQueueETA.text(eta.toTimeEstimate());
 
                         VARIABLES.QoLStats.na = data.p.next_action;
 
@@ -3122,6 +3157,7 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
     $(document).on('roa-ws:page:house_room_item roa-ws:page:carve_gem', function (e, data) {
         if (data.item.room_type === 22 && data.item.item_type === 101) {
             QoL.improveGemSplicingMenu();
+            QoL.addCarvingTableQueueObserver();
         }
         if (data.item.room_type === 22 && data.item.item_type === 100) {
             QoL.addCraftingTableQueueObserver();
