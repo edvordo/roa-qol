@@ -746,8 +746,6 @@
                             disclaimer: VARIABLES.QoLStats.d.CraftCarveQueueETA === 0 ? `<h6>--------</h6>If this shows zero, open carving bench page in house`: ''
                         };
 
-                        console.log({ obj, t: `<h5>Based upon</h5>{total} gem fragments required to complete all gems in queue at {frags} fragments used every action and {time}s action timer{disclaimer}`.formatQoL(obj) })
-
                         VARIABLES.QoLStats.e.CraftCarveQueueETA
                           .attr({ 'data-original-title': `<h5>Based upon</h5>{total} gem fragments required to complete all gems in queue at {frags} fragments used every action and {time}s action timer{disclaimer}`.formatQoL(obj) });
                     }
