@@ -58,6 +58,9 @@
         const TRACKER_TBL_NAME   = 'tracker';
         const AVGDMGSTR_TBL_NAME = 'average_damage_to_strength';
 
+        const LOCKET_HOUR_SINCE = 20;
+        const LOCKET_HOUR_UNTIL = 6;
+
         const DB_QUEUE               = {};
         DB_QUEUE[TRACKER_TBL_NAME]   = [];
         DB_QUEUE[AVGDMGSTR_TBL_NAME] = [];
@@ -157,24 +160,25 @@
             settings: DEFAULT_SETTINGS,
 
             QoLStats: {
-                e         : {}, // elements
-                d         : {}, // data
-                bs        : moment.tz(GAME_TIME_ZONE),
-                hs        : moment.tz(GAME_TIME_ZONE),
-                cts       : moment.tz(GAME_TIME_ZONE),
-                cas       : moment.tz(GAME_TIME_ZONE),
-                b         : 0, // battles
-                h         : 0, // harvests
-                ct        : 0, // crafts
-                ca        : 0, // varves
-                na        : 0, // next action
-                PlXPReq   : 0,
-                FoodXPReq : 0,
-                WoodXPReq : 0,
-                IronXPReq : 0,
-                StoneXPReq: 0,
-                CrftXPReq : 0,
-                CarvXPReq : 0,
+                e                  : {}, // elements
+                d                  : {}, // data
+                bs                 : moment.tz(GAME_TIME_ZONE),
+                hs                 : moment.tz(GAME_TIME_ZONE),
+                cts                : moment.tz(GAME_TIME_ZONE),
+                cas                : moment.tz(GAME_TIME_ZONE),
+                b                  : 0, // battles
+                h                  : 0, // harvests
+                ct                 : 0, // crafts
+                ca                 : 0, // carves
+                na                 : 0, // next action
+                PlXPReq            : 0,
+                FoodXPReq          : 0,
+                WoodXPReq          : 0,
+                IronXPReq          : 0,
+                StoneXPReq         : 0,
+                CrftXPReq          : 0,
+                CarvXPReq          : 0,
+                QuestProgressChance: 0,
             },
 
             tracker: [
@@ -1534,7 +1538,37 @@
                 setupLevelRequirements(player) {
                     VARIABLES.QoLStats.PlXPReq    = player.levelCost;
                 },
+                extractQuestProgressChance(equipment) {
+                  VARIABLES.QoLStats.QuestProgressChance = Object.keys(equipment)
+                    .reduce((carry, slot) => {
+                      if (! equipment[slot]) {
+                        return carry;
+                      }
 
+                      if (false === equipment[slot].hasOwnProperty('b')) {
+                          return carry;
+                      }
+
+                      if (! equipment[slot].b) {
+                          return carry;
+                      }
+
+                      const questProgressChanceBonus = equipment[slot].b.find(bonus => bonus.endsWith('Quest Progress Chance'));
+                      if (! questProgressChanceBonus) {
+                        return carry;
+                      }
+
+                      let bonus = parseFloat(questProgressChanceBonus);
+
+                      carry += bonus;
+
+                      return carry;
+                    }, 0);
+
+                    if (fn.__.isLocketDoubleTime()) {
+                        VARIABLES.QoLStats.QuestProgressChance /= 2;
+                    }
+                },
                 localStorageStats() {
                     let t = 0;
                     let h = document.querySelector('#RQ-dashboard-localstorage-state');
@@ -2109,6 +2143,58 @@
                     }
                     return multiplier;
                 },
+                msUntilNextBoundary(date) {
+                    const hour = date.getUTCHours();
+                    const next = new Date(date);
+
+                    if (hour >= LOCKET_HOUR_SINCE) {
+                        next.setUTCDate(next.getUTCDate() + 1);
+                        next.setUTCHours(LOCKET_HOUR_UNTIL, 0, 0, 0);
+                    } else if (hour < LOCKET_HOUR_UNTIL) {
+                        next.setUTCHours(LOCKET_HOUR_UNTIL, 0, 0, 0);
+                    } else {
+                        next.setUTCHours(LOCKET_HOUR_SINCE, 0, 0, 0);
+                    }
+
+                    return next - date;
+                },
+                estimateQuestTimeLikelyMs(actionsNeeded) {
+                    let now = new Date();
+                    const { QuestProgressChance } = VARIABLES.QoLStats;
+
+                    let meanMs = 0;
+
+                    while (actionsNeeded > 0) {
+                        const effectiveChance = QuestProgressChance * (fn.__.isLocketDoubleTime(now) ? 2 : 1);
+
+                        const guaranteedQuestProgress = Math.floor(effectiveChance / 100);
+                        const p = (effectiveChance % 100) / 100;
+                        const tickExpectedQuestProgress = 1 + guaranteedQuestProgress + p;
+
+                        const meanRate = tickExpectedQuestProgress / VARIABLES.QoLStats.na;
+                        const windowMs = fn.__.msUntilNextBoundary(now);
+
+                        const expectedProgress = meanRate * windowMs;
+
+                        let usedMs = windowMs;
+                        let usedProgress = expectedProgress;
+
+                        if (expectedProgress >= actionsNeeded) {
+                            usedMs = actionsNeeded / meanRate;
+                            usedProgress = actionsNeeded;
+                        }
+
+                        meanMs += usedMs;
+
+                        actionsNeeded -= usedProgress;
+                        now = new Date(now.getTime() + usedMs);
+                    }
+
+                    return meanMs;
+                },
+                isLocketDoubleTime(datetime = new Date()) {
+                    return datetime.getUTCHours() >= LOCKET_HOUR_SINCE || datetime.getUTCHours() < LOCKET_HOUR_UNTIL;
+                },
                 questEstimate(quest, battle = false) {
                     if (!VARIABLES.settings.estimate_quest_completion) {
                         return;
@@ -2143,10 +2229,18 @@
 
                     let msNeeded = VARIABLES.QoLStats.na * actionsNeeded * multiplier;
 
-                    document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.textContent = `Done in ${msNeeded.toTimeEstimate()}`);
+                    let questEstimateInfo = `Done in ${msNeeded.toTimeEstimate()}`;
+
+                    if (VARIABLES.QoLStats.QuestProgressChance > 0) {
+                        const msNeededWithLocket = fn.__.estimateQuestTimeLikelyMs(actionsNeeded);
+
+                        questEstimateInfo = `Done in: ${msNeededWithLocket.toTimeEstimate()} <img alt="amulet" src="equipment/amulet.png" height="14">`;
+                    }
+                    document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.innerHTML = questEstimateInfo);
 
                     // console.log(quest.c.format(), quest.r.format(), VARIABLES.QoLStats.na, actionsNeeded.format(), msNeeded.toTimeEstimate(), msNeeded.toTimeRemaining());
                 },
+
                 processDrops(type, record) {
                     if (!VARIABLES.settings.drop_tracker) {
                         return false;
@@ -2334,6 +2428,10 @@
                         if (data.p.hasOwnProperty('chatScroll')) {
                             fn.API.setChatDirection(data.p.chatScroll);
                         }
+                    }
+
+                    if (data.hasOwnProperty('equipment')) {
+                      fn.__.extractQuestProgressChance(data.equipment);
                     }
                 },
                 changeSetting(setting, element) {
@@ -2557,7 +2655,7 @@
                 externalOpenTo(main, sub = null, force = true) {
                     $('#modalTitle').text('RoA-QoL - HUB');
                     $('#modalWrapper, #modalBackground, #RQ-hub-wrapper').show();
-                    fn.API.hubShowSection(main, sub, force)
+                    fn.API.hubShowSection(main, sub, force);
                 },
                 hubShowSection(main, sub = null, force = true) {
                     if (false === force && 0 !== VARIABLES.hub.tab.length) {
@@ -2918,7 +3016,7 @@ You can buy ${computed.can_buy} more crystals for <span class="gold">${computed.
                                 if (true === shouldStop) {
                                     return;
                                 }
-                                jumpInterval = setInterval(() => fn.helpers.jumpQuestMob(-1), VARIABLES.settings.jump_mobs_speed)
+                                jumpInterval = setInterval(() => fn.helpers.jumpQuestMob(-1), VARIABLES.settings.jump_mobs_speed);
                             }, 500)();
                         });
 
