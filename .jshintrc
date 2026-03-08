@@ -1,5 +1,5 @@
 {
-  "esversion": 6,
+  "esversion": 11,
   "devel": true,
   "globals": {
     "GM_info": true,
