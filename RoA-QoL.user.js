@@ -2195,6 +2195,18 @@
                 isLocketDoubleTime(datetime = new Date()) {
                     return datetime.getUTCHours() >= LOCKET_HOUR_SINCE || datetime.getUTCHours() < LOCKET_HOUR_UNTIL;
                 },
+                isQuestingDay(datetime = new Date()) {
+                    const day = datetime.getUTCDate();
+                    const month = datetime.getUTCMonth();
+                    const year = datetime.getUTCFullYear();
+                    // technically year.length - 1 results in "undefined",
+                    // but charAt doesn't seem to care and returns the first character
+                    // this is how it's done in the source files, don't look at me
+                    const isRecurringQuesting = (day + month + 1 + Number(String(year).charAt(year.length - 1))) % 30 === 22;
+                    const isBirthDay = day === 15 && month === 0;
+                    const isChristmas = day === 25 && month === 11;
+                    return true === isRecurringQuesting || true === isBirthDay || true === isChristmas;
+                },
                 questEstimate(quest, battle = false) {
                     if (!VARIABLES.settings.estimate_quest_completion) {
                         return;
