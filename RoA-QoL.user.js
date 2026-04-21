@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.10
+// @version      2.9.11
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -2169,7 +2169,8 @@
 
                         const guaranteedQuestProgress = Math.floor(effectiveChance / 100);
                         const p = (effectiveChance % 100) / 100;
-                        const tickExpectedQuestProgress = 1 + guaranteedQuestProgress + p;
+                        const baseQuestActionsCompleted = fn.__.isQuestingDay(now) ? 2 : 1;
+                        const tickExpectedQuestProgress = baseQuestActionsCompleted + guaranteedQuestProgress + p;
 
                         const meanRate = tickExpectedQuestProgress / VARIABLES.QoLStats.na;
                         const windowMs = fn.__.msUntilNextBoundary(now);
@@ -2239,15 +2240,14 @@
                         multiplier = fn.__.getQuestMultiplier(quest);
                     }
 
-                    let msNeeded = VARIABLES.QoLStats.na * actionsNeeded * multiplier;
+                    const msNeededWithLocket = fn.__.estimateQuestTimeLikelyMs(actionsNeeded * multiplier);
 
-                    let questEstimateInfo = `Done in ${msNeeded.toTimeEstimate()}`;
+                    let questEstimateInfo = `Done in ${msNeededWithLocket.toTimeEstimate()}`;
 
                     if (VARIABLES.QoLStats.QuestProgressChance > 0) {
-                        const msNeededWithLocket = fn.__.estimateQuestTimeLikelyMs(actionsNeeded);
-
-                        questEstimateInfo = `Done in: ${msNeededWithLocket.toTimeEstimate()} <img alt="amulet" src="equipment/amulet.png" height="14">`;
+                        questEstimateInfo += ` <img alt="amulet" src="equipment/amulet.png" height="14" title="Effective Quest Progress Chance: ${VARIABLES.QoLStats.QuestProgressChance.format(2)}%">`;
                     }
+
                     document.querySelectorAll('.RQ-quest-estimate').forEach(i => i.innerHTML = questEstimateInfo);
 
                     // console.log(quest.c.format(), quest.r.format(), VARIABLES.QoLStats.na, actionsNeeded.format(), msNeeded.toTimeEstimate(), msNeeded.toTimeRemaining());
