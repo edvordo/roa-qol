@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.11
+// @version      2.9.12
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -2474,11 +2474,10 @@
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
+                            VARIABLES.QoLStats.na = data.p.next_action;
 
                             fn.__.processDrops('battle', data.b);
                             fn.__.questEstimate(data.p.bq_info2, true);
-
-                            VARIABLES.QoLStats.na = data.p.next_action;
                         }
                         fn.__.logAvgDmg(data);
                     }
