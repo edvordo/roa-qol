@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.12
+// @version      2.9.13
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -170,7 +170,7 @@
                 h                  : 0, // harvests
                 ct                 : 0, // crafts
                 ca                 : 0, // carves
-                na                 : 0, // next action
+                na                 : 6000, // next action
                 PlXPReq            : 0,
                 FoodXPReq          : 0,
                 WoodXPReq          : 0,
@@ -2474,7 +2474,7 @@
                                 eta = eta.toTimeEstimate();
                             }
                             VARIABLES.QoLStats.e.LevelETA.text(eta);
-                            VARIABLES.QoLStats.na = data.p.next_action;
+                            VARIABLES.QoLStats.na = Math.max(data.p.next_action, 3000);
 
                             fn.__.processDrops('battle', data.b);
                             fn.__.questEstimate(data.p.bq_info2, true);
@@ -2516,7 +2516,7 @@
                         }
                         VARIABLES.QoLStats.e.LevelETA.text(eta);
 
-                        VARIABLES.QoLStats.na = data.p.next_action;
+                        VARIABLES.QoLStats.na = Math.max(data.p.next_action, 3000);
 
                         fn.__.processDrops('TS', data.a);
                         fn.__.questEstimate(data.p.tq_info2);
@@ -2557,7 +2557,7 @@
                         eta = VARIABLES.QoLStats.d.CraftCarveQueueETA / data.a.ad * data.p.next_action;
                         VARIABLES.QoLStats.e.CraftCarveQueueETA.text(eta.toTimeEstimate());
 
-                        VARIABLES.QoLStats.na = data.p.next_action;
+                        VARIABLES.QoLStats.na = Math.max(data.p.next_action, 3000);
 
                         fn.__.processDrops('craft', data.a);
                         fn.__.questEstimate(data.p.pq_info2);
@@ -2598,7 +2598,7 @@
                         eta = VARIABLES.QoLStats.d.CraftCarveQueueETA / data.a.ad * data.p.next_action;
                         VARIABLES.QoLStats.e.CraftCarveQueueETA.text(eta.toTimeEstimate());
 
-                        VARIABLES.QoLStats.na = data.p.next_action;
+                        VARIABLES.QoLStats.na = Math.max(data.p.next_action, 3000);
 
                         fn.__.processDrops('carve', data.a);
                         fn.__.questEstimate(data.p.pq_info2);
