@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RoA-QoL
 // @namespace    Reltorakii_is_awesome
-// @version      2.9.13
+// @version      2.9.14
 // @description  try to take over the world!
 // @author       Reltorakii
 // @icon         https://cdn.jsdelivr.net/gh/edvordo/roa-qol@2.8.4/resources/img/logo-32.png
@@ -2203,7 +2203,7 @@
                     // technically year.length - 1 results in "undefined",
                     // but charAt doesn't seem to care and returns the first character
                     // this is how it's done in the source files, don't look at me
-                    const isRecurringQuesting = (day + month + 1 + Number(String(year).charAt(year.length - 1))) % 30 === 22;
+                    const isRecurringQuesting = (day + month + Number(String(year).charAt(year.length - 1))) % 30 === 22;
                     const isBirthDay = day === 15 && month === 0;
                     const isChristmas = day === 25 && month === 11;
                     return true === isRecurringQuesting || true === isBirthDay || true === isChristmas;
